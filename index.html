@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111917" />
+    <meta name="description" content="A little friendly competition. Play 3D 8-ball with a friend, right here on one device." />
+    <title>Pocket Club — Pass & Play</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23111917'/%3E%3Ccircle cx='32' cy='32' r='15' fill='%23f1e8d7'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='28' font-family='Arial' font-weight='bold'%3E8%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <section id="main-menu" class="main-menu" aria-labelledby="menu-title">
+      <div class="menu-content">
+        <div class="menu-brand"><span class="logo-ball">8</span><span>pocketclub.</span></div>
+        <span class="eyebrow">YOUR TABLE. YOUR SHOT.</span>
+        <h1 id="menu-title">Make your<br />next shot.</h1>
+        <p class="menu-intro">A little friendly competition. A little room to experiment.</p>
+        <button id="menu-continue" class="primary-button menu-continue" hidden>Continue your game <span>↗</span></button>
+        <div class="menu-modes">
+          <button id="menu-match" class="menu-mode"><span class="menu-mode-icon">01 / 02</span><strong>Two-player 8-ball</strong><span>Share a device. Take turns. Sink the 8 last.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
+          <button id="menu-playground" class="menu-mode"><span class="menu-mode-icon">✳</span><strong>Playground</strong><span>Arrange the balls. Build a trick shot. Try again.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
+        </div>
+        <div class="menu-links"><button id="menu-settings" class="text-button">Settings</button><span>·</span><button id="menu-help" class="text-button">How to play</button></div>
+        <p id="menu-status" class="menu-status" role="status">3D pool, right in your browser.</p>
+      </div>
+    </section>
+    <main class="app" id="app" hidden>
+      <header class="header">
+        <button class="wordmark" id="menu-button" aria-label="Open main menu" title="Main menu"><span class="logo-ball">8</span><span>pocket<span class="wordmark-light">club</span><span class="logo-dot">.</span></span></button>
+        <div class="header-actions">
+          <span class="local-label"><span class="live-dot"></span> LOCAL MULTIPLAYER</span>
+          <button id="restart-button" class="icon-button" aria-label="New game" title="Start a new game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1.5 7M4 4v6h6"/></svg></button>
+          <button class="icon-button" id="sound-button" aria-label="Enable sound" title="Enable sound"></button>
+          <button class="icon-button" id="settings-button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="#111917"/><circle cx="16" cy="17" r="3" fill="#111917"/></svg></button>
+          <button class="icon-button" id="help-button" aria-label="How to play" title="How to play">?</button>
+        </div>
+      </header>
+
+      <section class="game" data-power-side="right" data-mode="match" aria-label="Billiards game">
+        <div class="scoreboard">
+          <section class="player-card active" id="player-0" aria-label="Player 1">
+            <div class="player-top"><span class="player-avatar">01</span><div><h2>Player 1</h2><span class="player-group" id="group-0">OPEN TABLE</span></div><span class="turn-dot" aria-label="Current turn"></span></div>
+            <div class="ball-tray" id="tray-0" aria-label="Player 1 remaining balls"></div>
+          </section>
+          <div class="score-divider"><span>8</span></div>
+          <section class="player-card" id="player-1" aria-label="Player 2">
+            <div class="player-top"><span class="player-avatar">02</span><div><h2>Player 2</h2><span class="player-group" id="group-1">OPEN TABLE</span></div><span class="turn-dot" aria-label="Current turn"></span></div>
+            <div class="ball-tray" id="tray-1" aria-label="Player 2 remaining balls"></div>
+          </section>
+        </div>
+
+        <section class="playground-bar" aria-label="Playground controls">
+          <span class="playground-title">PLAYGROUND <span id="playground-attempt">TRY 01</span></span>
+          <div class="playground-tabs" role="group" aria-label="Playground phase"><button id="pg-arrange" aria-pressed="true">Arrange</button><button id="pg-shoot" aria-pressed="false">Shoot</button></div>
+          <div class="playground-actions"><button id="pg-balls">＋ Balls</button><button id="pg-remove">Remove</button><button id="pg-clear">Clear</button><button id="pg-retry" class="retry-button">↶ Retry setup</button></div>
+        </section>
+
+        <div class="table-info">
+          <div class="turn-status"><span class="status-dot"></span><span id="turn-status" aria-live="polite"><strong>Player 1</strong>, break the ice.</span><span class="shot-count" id="shot-count">SHOT 01</span></div>
+        </div>
+        <div class="table-area" id="table-area">
+          <div class="table-meta"><span><span class="live-dot"></span> FRIENDLY 8-BALL</span><span>PASS & PLAY <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h12m-4-4 4 4-4 4M17 17H5m4 4-4-4 4-4"/></svg></span></div>
+          <div id="canvas-container" role="application" aria-label="3D billiards table. Tap the cloth or drag the cue to aim. Use the aiming wheel for precision. Pull down and release the power control to shoot. Arrow keys adjust aim and power; Space shoots." tabindex="0"></div>
+          <div id="ball-placement-layer" class="ball-placement-layer" hidden>
+            <span id="ball-placement-ring" class="ball-placement-ring" aria-hidden="true"></span>
+            <span id="ball-placement-line" class="ball-placement-line" aria-hidden="true"></span>
+            <button id="ball-drag-handle" class="ball-drag-handle" aria-label="Drag selected ball. Arrow keys nudge it; Shift makes smaller adjustments." title="Drag to position; arrow keys to nudge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18m-12-6 3-3 3 3m-6 12 3 3 3-3M6 9l-3 3 3 3m12-6 3 3-3 3"/></svg><span id="ball-handle-label" aria-hidden="true">C</span></button>
+          </div>
+          <section id="pocketed-panel" class="pocketed-panel" aria-label="Pocketed balls"><span class="pocketed-label" aria-hidden="true">DOWN</span><ol id="pocketed-balls" class="pocketed-list" tabindex="0" aria-label="Balls in pocketing order. Scroll to see all pocketed balls."></ol><span id="pocketed-empty" aria-label="No balls pocketed">—</span><span id="pocket-announcement" class="sr-only" aria-live="polite"></span></section>
+          <div id="control-dock" class="control-dock" role="group" aria-label="Aiming and shooting controls">
+            <div id="shot-power" class="shot-power" role="slider" tabindex="0" aria-label="Shot power. Drag down and release to shoot." aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0 percent. Pull down to charge." aria-describedby="power-instructions" aria-disabled="true">
+              <span class="power-label">POWER</span>
+              <output id="power-value" aria-hidden="true">0<span>%</span></output>
+              <div class="power-track" aria-hidden="true"><div class="power-fill"></div><div class="power-thumb"><span></span><span></span></div></div>
+              <span id="power-hint" class="power-hint" aria-hidden="true">PULL ↓</span>
+            </div>
+            <div id="aim-wheel" class="aim-wheel" role="slider" tabindex="0" aria-label="Fine aiming wheel" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0" aria-disabled="true" aria-describedby="aim-instructions">
+              <span class="wheel-label">FINE AIM</span><div class="wheel-drum" aria-hidden="true"></div><span class="wheel-marker" aria-hidden="true"></span><output aria-hidden="true">0.0°</output>
+            </div>
+          </div>
+          <span id="aim-instructions" class="sr-only">Drag the wheel up or down to adjust your aim precisely. Arrow keys also adjust the angle. This control does not shoot.</span>
+          <span id="power-instructions" class="sr-only">Drag down to increase power and release to shoot. Return to the starting point or move sideways to cancel. With a keyboard, use arrow keys to set power and Enter or Space to shoot.</span>
+          <div class="loading-state" id="loading-state"><span class="loading-ball">8</span><p>Setting the table…</p></div>
+          <div class="turn-toast" id="turn-toast" role="status" aria-live="polite"></div>
+          <div class="table-caption"><span class="aim-icon">↗</span><span id="table-hint">Tap the table or drag to aim</span></div>
+        </div>
+
+        <footer class="footer"><span>ONE DEVICE. TWO PLAYERS. GOOD TIMES.</span><span class="footer-right">A little friendly competition <span>✳</span></span></footer>
+      </section>
+    </main>
+
+    <dialog id="help-dialog" class="modal">
+      <button class="modal-close icon-button" data-close="help-dialog" aria-label="Close instructions">×</button>
+      <span class="eyebrow">WELCOME TO THE CLUB</span><h1>A little friendly<br />competition.</h1><p class="modal-intro">Grab a friend. Share a screen. Make your shot.</p>
+      <div class="instruction"><span>01</span><div><h3>Find your angle</h3><p>Tap the cloth to aim at a point, or grab and drag the stick to rotate it around the cue ball. Roll the FINE AIM wheel up or down for tiny adjustments. The dotted line shows your ball’s path.</p></div></div>
+      <div class="instruction"><span>02</span><div><h3>Pull, then release</h3><p>Pull down on the side power control. A longer pull means more power. Release to shoot. Slide back up or move sideways to cancel. Choose the left or right side in Settings.</p></div></div>
+      <div class="instruction"><span>03</span><div><h3>Save the 8 for last</h3><p>The first colored ball pocketed assigns solids or stripes. Clear your seven, then pocket the 8 to win. Sink it early or scratch on that shot, and the other player wins.</p></div></div>
+      <div class="rules-note">Pocket your own ball to keep your turn; otherwise pass the device. A scratch ends your turn and returns the cue ball to a clear spot. Groups are assigned only on a scratch-free shot. No called pockets or first-contact fouls. On desktop, use ← / → to aim, ↑ / ↓ for power, and Space to shoot.</div>
+      <div class="rules-note"><strong>Playground:</strong> choose Playground from the main menu. In Arrange, drag a ball or its offset handle, or use ＋ Balls to select a ball to place. Switch to Shoot to practice without turns or 8-ball penalties. Retry setup restores your saved arrangement. Open the menu by tapping the Pocket Club logo.</div>
+      <button class="primary-button" data-close="help-dialog">Let’s play <span>↗</span></button>
+    </dialog>
+    <dialog id="balls-dialog" class="modal small-modal" aria-labelledby="balls-title">
+      <button class="modal-close icon-button" data-close="balls-dialog" aria-label="Close ball palette">×</button>
+      <span class="eyebrow">BUILD YOUR SHOT</span><h1 id="balls-title">Pick a ball.</h1>
+      <p class="modal-intro">Choose a ball, then tap the cloth to add it. Balls already on the table are selected for dragging.</p>
+      <div id="ball-palette" class="ball-palette" role="group" aria-label="Available balls"></div>
+    </dialog>
+    <dialog id="settings-dialog" class="modal small-modal" aria-labelledby="settings-title">
+      <button class="modal-close icon-button" data-close="settings-dialog" aria-label="Close settings">×</button>
+      <span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h1 id="settings-title">Your controls.</h1>
+      <fieldset class="side-setting"><legend>Aiming & shooting control side</legend><div class="side-options"><label><input type="radio" name="power-side" value="left" /><span>← Left</span></label><label><input type="radio" name="power-side" value="right" checked /><span>Right →</span></label></div></fieldset>
+      <p class="modal-intro settings-note">Your choice is saved on this device. Both controls sit beside the table. Use the wheel for fine aim, then pull down and release the power control to shoot.</p>
+      <button class="primary-button" data-close="settings-dialog">Back to the table <span>↗</span></button>
+    </dialog>
+    <dialog id="restart-dialog" class="modal small-modal"><span class="eyebrow">FRESH FELT, FRESH START</span><h1>Rack ’em up?</h1><p class="modal-intro">Start a new game with Player 1 breaking.</p><div class="modal-actions"><button class="secondary-button" data-close="restart-dialog">Keep playing</button><button class="primary-button" id="confirm-restart">New game ↗</button></div></dialog>
+    <dialog id="winner-dialog" class="modal winner-modal"><span class="winner-ball">8</span><span class="eyebrow">THAT’S A WRAP</span><h1 id="winner-title">Player 1 wins.</h1><p id="winner-detail" class="modal-intro"></p><button class="primary-button" id="play-again">One more round <span>↗</span></button><button class="text-button winner-close" data-close="winner-dialog">Admire the table</button></dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
