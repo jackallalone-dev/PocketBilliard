@@ -8,9 +8,8 @@ export class SpinControl {
     element.addEventListener('pointerdown', (event) => {
       if (event.isPrimary === false || event.button !== 0 || this.drag || !this.canChange()) return;
       event.preventDefault();
-      this.drag = { id: event.pointerId, original: { ...this.value } };
+      this.drag = { id: event.pointerId, original: { ...this.value }, x: event.clientX, y: event.clientY };
       element.focus({ preventScroll: true });element.setPointerCapture(event.pointerId);
-      this.move(event);
     });
     element.addEventListener('pointermove', (event) => this.move(event));
     element.addEventListener('pointerup', (event) => {
@@ -40,9 +39,12 @@ export class SpinControl {
     const rect = this.element.getBoundingClientRect();
     const radius = Math.min(rect.width, rect.height) / 2 * MAX_TIP_OFFSET;
     if (radius <= 0) return;
-    const x = (event.clientX - rect.left - rect.width / 2) / radius;
-    const y = (rect.top + rect.height / 2 - event.clientY) / radius;
-    this.setValue(Math.hypot(x, y) < 0.035 ? { x: 0, y: 0 } : { x, y });
+    const dx = event.clientX - this.drag.x, dy = event.clientY - this.drag.y;
+    if (!this.drag.moved && Math.hypot(dx, dy) < 3) return;
+    this.drag.moved = true;
+    this.drag.x = event.clientX;this.drag.y = event.clientY;
+    // Relative motion: touching anywhere starts a swipe, never a new target.
+    this.setValue({ x: this.value.x + dx / radius, y: this.value.y - dy / radius });
   }
 
   end(restore) {

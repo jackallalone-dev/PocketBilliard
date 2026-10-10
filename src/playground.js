@@ -17,12 +17,13 @@ export function legalBallPosition(balls, id, x, z) {
   return balls.every((ball) => ball.id === id || ball.pocketed || Math.hypot(x - ball.x, z - ball.z) >= SEPARATION - 1e-7);
 }
 
-export function freeBallPosition(balls, id, targetX, targetZ) {
+export function freeBallPosition(balls, id, targetX, targetZ, minZ = -Infinity) {
   if (!Number.isFinite(targetX) || !Number.isFinite(targetZ)) return null;
   const limitX = TABLE.width / 2 - TABLE.radius - MARGIN;
   const limitZ = TABLE.length / 2 - TABLE.radius - MARGIN;
   const clamp = (value, limit) => Math.max(-limit, Math.min(limit, value));
-  const desired = { x: clamp(targetX, limitX), z: clamp(targetZ, limitZ) };
+  const clampZ = (value) => Math.max(minZ, clamp(value, limitZ));
+  const desired = { x: clamp(targetX, limitX), z: clampZ(targetZ) };
   const point = { ...desired };
   const original = balls.find((ball) => ball.id === id);
   for (let pass = 0; pass < 20; pass++) {
@@ -40,16 +41,16 @@ export function freeBallPosition(balls, id, targetX, targetZ) {
       point.x = ball.x + dx / length * (SEPARATION + 1e-6);
       point.z = ball.z + dz / length * (SEPARATION + 1e-6);
     }
-    point.x = clamp(point.x, limitX);point.z = clamp(point.z, limitZ);
+    point.x = clamp(point.x, limitX);point.z = clampZ(point.z);
     if (legalBallPosition(balls, id, point.x, point.z)) return point;
   }
   // A crowded rail should hold the last valid placement rather than jump.
-  if (original && !original.pocketed && legalBallPosition(balls, id, original.x, original.z)) return { x: original.x, z: original.z };
+  if (original && !original.pocketed && original.z >= minZ && legalBallPosition(balls, id, original.x, original.z)) return { x: original.x, z: original.z };
   for (let radius = 0.05; radius <= 2; radius += 0.05) {
     for (let step = 0; step < 32; step++) {
       const angle = step * Math.PI / 16;
       const x = clamp(desired.x + Math.cos(angle) * radius, limitX);
-      const z = clamp(desired.z + Math.sin(angle) * radius, limitZ);
+      const z = clampZ(desired.z + Math.sin(angle) * radius);
       if (legalBallPosition(balls, id, x, z)) return { x, z };
     }
   }

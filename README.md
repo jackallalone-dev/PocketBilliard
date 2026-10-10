@@ -22,19 +22,21 @@ Run the commands above inside your Debian session and leave the server running. 
 
 The app opens on a **main menu**. Choose **Two-player 8-ball** or **Playground**. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. Both modes keep their own table state while the page remains open, including a shot paused in motion. Reloading the page starts a fresh session.
 
-- **Touch to aim:** tap a point on the cloth or drag across it to set the shot direction. The white dotted line predicts the cue ball’s initial path; the gold line previews the first object ball’s direction.
+- **Touch to aim:** tap a point on the cloth or drag across it to set the shot direction. The white dotted line shows the initial path, the gold line previews the first target ball, and the cyan line estimates the white ball’s short post-contact path, including draw/follow. The contact circle marks the impact position. The trajectory lines render above balls.
+- **Aiming aids:** Settings has independent switches for the initial guide, target-ball line, white-ball path, and contact circle. Choices are saved on this device when storage is available. The cue remains visible even with every aid off.
 - **Drag the cue:** grab the visible stick and move it around the cue ball to rotate your aim. Touching the rear of the stick preserves the current angle instead of flipping the shot.
 - **Fine-aim wheel:** drag the small wheel below the power control up/down for precise adjustments. Mouse scrolling and arrow keys also work on the wheel; Shift + arrow gives an even smaller step.
 - **Shoot:** pull down on the vertical power control beside the table, then release to shoot. A longer pull gives more power. Tapping alone does not shoot.
-- **Cue-ball spin:** tap **SPIN** above the power control. The white-ball selector is viewed from behind your cue: bottom contact adds draw/backspin, top contact adds follow/topspin, and left/right contact adds sidespin. Drag the dot for combinations, or choose a preset. The cue’s tip position and the small red-dot indicator show the selected contact point.
+- **Cue-ball spin:** tap **SPIN** above the power control. Swipe anywhere on the selector to move the dot **relative to its current position**; merely touching it does not move the dot. Swipe down for draw/backspin, up for follow/topspin, and sideways for sidespin. Multiple swipes accumulate; presets and Home can center it. The cue’s tip position and red-dot indicator show the contact point.
 - **Cancel a shot:** return your finger to the starting height or move it sideways before releasing. Switching apps, opening a dialog, or rotating the screen cancels an unfinished pull too.
 - **Left/right controls:** open **Settings** in the header and choose the control side. The power control and aiming wheel dock directly beside the table’s outer rail on that side, in portrait or landscape. The selection is saved on this device when browser storage is available.
 - **Pocketed-ball list:** a slim vertical tray sits beside the table, opposite the shooting and fine-aim controls. It mirrors automatically when you change control sides and shows numbered balls in pocketing order as they drop. Scroll the tray on shorter screens to see every ball. Cue-ball scratches are announced separately. A new game clears the tray.
-- **Turns:** pocket your own ball to shoot again. Otherwise, pass the device to the other player when the balls stop.
-- **Groups:** the first colored ball pocketed on a scratch-free shot assigns solids or stripes.
-- **Win:** clear your group, then pocket the 8-ball. Pocketing the 8 early, or scratching on the same shot as the 8, awards the game to the other player.
-- **Scratch:** pocketing the cue ball ends your turn. It automatically returns to a clear spot near the starting area.
-- **House rules:** simplified 8-ball, with no called pockets, first-contact fouls, or special break exemptions. Opponent balls stay pocketed. If your final group ball and the 8 fall on the same shot, your group ball must fall first.
+- **Break:** place the cue behind the head string with the move handle, confirm, and shoot. Pocket a numbered ball or drive four distinct object balls to rails. An illegal break re-racks with the opponent choosing who breaks. A legal 8-ball break wins under the selected UPA rules; pocketing it with a foul loses.
+- **Call your shot:** after the break, choose one ball and pocket using **Call shot**, or declare **Safety**. P1–P6 labels match the pockets on the table. This app requests an explicit call even for obvious shots.
+- **Turns and groups:** the table stays open after the break. The first legally pocketed called ball assigns solids/stripes. Legally making your called shot retains the turn; a miss or safety passes it. Extra pocketed balls stay down.
+- **Win:** first clear your group, then legally pocket the 8 in its called pocket on a later shot. An early 8, wrong 8-ball pocket, or 8 on a foul loses. A scratch while attempting the 8 is only a foul if the 8 stays on the table.
+- **Fouls / ball in hand:** scratches, wrong first contact, no object-ball contact, no rail/pocket after contact, illegal kitchen contact, close double-hit approaches, and off-table balls are enforced. The opponent can place the cue anywhere clear, except after a legal-break foul: placement is behind the head string and the first object hit must be outside the kitchen. Confirm placement before aiming.
+- **Match rules:** UPA-based **amateur** 8-ball, not the pro-only three-foul variant. New racks default to alternating breakers; the New Game dialog permits an agreed opening breaker. Settings includes concession and a mutually agreed stalemate after three consecutive foul innings each. See [RULES.md](RULES.md) for the source and digital scope.
 - **Desktop:** drag and release with a mouse, or use left/right arrows to aim, Shift + arrow for finer adjustments, up/down arrows for power, and Space to shoot while the table has focus. When the power control has focus, its arrow keys adjust power and Enter/Space fires; Escape cancels.
 - Tap the sound icon for optional synthesized shot sounds. Tap **?** for the rules, or the restart arrow to re-rack.
 
@@ -55,7 +57,7 @@ On desktop, focus the table or move handle and use arrow keys to nudge the selec
 - **Sidespin:** left/right spin changes the outgoing angle at a cushion. Combine it with draw or follow by moving the contact point diagonally.
 - Backspin wears off with travel and can become natural forward roll. A soft, long-distance shot may therefore follow instead of drawing. Center-ball shots also acquire natural roll from the cloth.
 - Match shots reset the selected contact point to center after settling. Playground retains the selection; Retry restores the first attempt’s spin.
-- The dotted guide previews the initial contact path, not the post-impact spin trajectory. Ball rotation is simulated alongside sliding/rolling cloth friction, cushion friction, and small ball-contact friction. This is a flat-table approximation; cue elevation, massé/swerve, squirt, jump shots, and miscues are not modeled.
+- The white guide previews initial contact. The cyan cue-ball path is only a short post-impact estimate: it stops at the next obstruction and does not simulate an entire multi-ball sequence. Ball rotation is simulated alongside sliding/rolling cloth friction, cushion friction, and small ball-contact friction. This is a flat-table approximation; cue elevation, massé/swerve, squirt, jump shots, and miscues are not modeled.
 
 ## Build and test
 
@@ -72,7 +74,10 @@ Deploy the generated `dist/` directory to any static web host. The game uses Web
 - `src/main.js` — input, UI, game loop, and turn flow
 - `src/table.js` — Three.js table, ball materials, aiming guides, and rendering
 - `src/table-geometry.js` — shared tapered cushion shapes, pocket openings, and aiming boundaries
-- `src/physics.js` — fixed-step ball physics and simplified 8-ball rules
+- `src/physics.js` — fixed-step ball physics, randomized legal racks, and rule-event emission
+- `src/match-rules.js` — UPA-based amateur rules and chronological shot tracking
+- `src/cue-placement.js` — match ball-in-hand placement and kitchen bounds
+- `src/aim-preview.js` — short spin-aware cue-ball path estimates
 - `src/ball-motion.js` — angular motion, cloth friction, and spin-aware collision impulses
 - `src/spin.js`, `src/spin-control.js`, `src/spin.css` — contact-point mapping and touch/keyboard spin selection
 - `src/audio.js` — optional Web Audio effects

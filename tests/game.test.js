@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PoolPhysics, EightBallGame, TABLE, POCKETS } from '../src/physics.js';
+import { PoolPhysics, TABLE, POCKETS } from '../src/physics.js';
 
 const ball = (id, x, z, vx = 0, vz = 0) => ({ id, x, z, vx, vz, pocketed: false });
 
@@ -9,8 +9,11 @@ test('rack has all 16 unique balls, the 8 in the center, and no overlaps', () =>
   assert.equal(new Set(physics.balls.map((b) => b.id)).size, 16);
   const eight = physics.balls.find((b) => b.id === 8);
   assert.equal(eight.x, 0);
-  const apex = physics.balls.find((b) => b.id === 1);
+  const apex = physics.balls[1];
   assert.equal(apex.z, TABLE.footSpot);
+  assert.ok(physics.cue.z > TABLE.headSpot);
+  assert.ok(physics.balls[11].id >= 1 && physics.balls[11].id <= 7);
+  assert.ok(physics.balls[15].id >= 9 && physics.balls[15].id <= 15);
   assert.ok(Math.abs(eight.z - (apex.z - (TABLE.radius * 2 + 0.006) * Math.sqrt(3))) < 1e-8);
   for (let i = 0; i < physics.balls.length; i++) {
     for (let j = i + 1; j < physics.balls.length; j++) {
@@ -80,67 +83,4 @@ test('scratched cue ball is returned to a free position', () => {
   for (const other of physics.balls.slice(1)) {
     assert.ok(Math.hypot(physics.cue.x - other.x, physics.cue.z - other.z) > TABLE.radius * 2);
   }
-});
-
-test('missing switches players; pocketing the first ball assigns groups and retains turn', () => {
-  const game = new EightBallGame();
-  assert.equal(game.resolveShot([]).player, 1);
-  const result = game.resolveShot([12, 3]);
-  assert.deepEqual(game.groups, ['solids', 'stripes']);
-  assert.equal(result.keepTurn, true);
-  assert.equal(game.currentPlayer, 1);
-  assert.equal(game.remaining(0).length, 6);
-  assert.equal(game.remaining(1).length, 6);
-  assert.equal(game.resolveShot([4]).keepTurn, false);
-  assert.equal(game.currentPlayer, 0);
-});
-
-test('a scratch overrides a pocket and does not assign an open table', () => {
-  const game = new EightBallGame();
-  const result = game.resolveShot([1, 0]);
-  assert.equal(result.scratch, true);
-  assert.equal(game.currentPlayer, 1);
-  assert.deepEqual(game.groups, [null, null]);
-  assert.ok(game.pocketed.has(1));
-  game.resolveShot([2]);
-  assert.deepEqual(game.groups, ['stripes', 'solids']);
-  assert.equal(game.remaining(1).length, 5);
-  game.resolveShot([3, 0]);
-  assert.equal(game.currentPlayer, 0);
-});
-
-test('pocketing the 8 early loses the game, even on the break', () => {
-  const game = new EightBallGame();
-  assert.deepEqual(game.resolveShot([8]), { winner: 1, scratch: false, reason: 'early-eight' });
-  assert.equal(game.resolveShot([1]), null, 'finished games reject further shots');
-});
-
-test('clearing your group then the 8 wins; scratching on the 8 loses', () => {
-  for (const scratch of [false, true]) {
-    const game = new EightBallGame();
-    game.resolveShot([1, 2, 3, 4, 5, 6, 7]);
-    assert.equal(game.remaining(0).length, 0);
-    const result = game.resolveShot(scratch ? [8, 0] : [8]);
-    assert.equal(result.winner, scratch ? 1 : 0);
-    assert.equal(result.reason, scratch ? 'scratch-on-eight' : 'cleared');
-  }
-});
-
-test('the last group ball must fall before the 8, including in the same shot', () => {
-  for (const legal of [true, false]) {
-    const game = new EightBallGame();
-    game.resolveShot([1, 2, 3, 4, 5, 6]);
-    const result = game.resolveShot(legal ? [7, 8] : [8, 7]);
-    assert.equal(result.winner, legal ? 0 : 1);
-  }
-});
-
-test('reset clears assignments, score, winner, and shot count', () => {
-  const game = new EightBallGame();
-  game.resolveShot([1]);game.resolveShot([8]);game.reset();
-  assert.equal(game.currentPlayer, 0);
-  assert.equal(game.winner, null);
-  assert.equal(game.shotNumber, 1);
-  assert.equal(game.pocketed.size, 0);
-  assert.deepEqual(game.groups, [null, null]);
 });

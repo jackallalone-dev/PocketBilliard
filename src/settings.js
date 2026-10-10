@@ -1,4 +1,19 @@
 const STORAGE_KEY = 'pocket-club.power-side';
+const AIDS_KEY = 'pocket-club.aim-aids';
+export const DEFAULT_AIM_AIDS = Object.freeze({ guideLine: true, targetLine: true, cueLine: true, contactCircle: true });
+
+export function loadAimAids(storage) {
+  try {
+    const saved = JSON.parse((storage ?? globalThis.localStorage)?.getItem(AIDS_KEY) || '{}');
+    return Object.fromEntries(Object.entries(DEFAULT_AIM_AIDS).map(([key, fallback]) => [key, typeof saved?.[key] === 'boolean' ? saved[key] : fallback]));
+  } catch { return { ...DEFAULT_AIM_AIDS }; }
+}
+
+export function saveAimAids(value, storage) {
+  const settings = Object.fromEntries(Object.entries(DEFAULT_AIM_AIDS).map(([key, fallback]) => [key, typeof value[key] === 'boolean' ? value[key] : fallback]));
+  try { (storage ?? globalThis.localStorage)?.setItem(AIDS_KEY, JSON.stringify(settings)); } catch { /* Session settings still apply. */ }
+  return settings;
+}
 
 export function loadPowerSide(storage) {
   try {

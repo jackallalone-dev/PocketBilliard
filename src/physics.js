@@ -1,9 +1,9 @@
 import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
 import { REST_MOTION, REST_ORIENTATION, advanceBall, hasBallMotion, cushionImpulse, ballContactFriction } from './ball-motion.js';
-import { clampSpin, MAX_TIP_OFFSET } from './spin.js';
+import { strikeMotion } from './spin.js';
 export { TABLE, POCKETS } from './table-geometry.js';
+export { EightBallGame, groupOf } from './match-rules.js';
 export const BALL_COLORS = ['#faf6e9', '#e9b52a', '#3776c4', '#d24c3f', '#8d58a5', '#df802e', '#39886c', '#924044', '#171c20', '#e9b52a', '#3776c4', '#d24c3f', '#8d58a5', '#df802e', '#39886c', '#924044'];
-export const groupOf = (id) => id > 0 && id < 8 ? 'solids' : id > 8 ? 'stripes' : null;
 
 export class PoolPhysics {
   constructor(onEvent = () => {}) {
@@ -12,8 +12,14 @@ export class PoolPhysics {
   }
 
   reset() {
-    this.balls = [{ id: 0, x: 0, z: TABLE.headSpot, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false }];
-    const rack = [1, 10, 2, 3, 8, 11, 12, 4, 13, 5, 6, 14, 7, 15, 9];
+    this.stepNumber = 0;
+    this.balls = [{ id: 0, x: 0, z: TABLE.headSpot + 0.6, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false }];
+    const solid = 1 + Math.floor(Math.random() * 7), stripe = 9 + Math.floor(Math.random() * 7);
+    const remaining = Array.from({ length: 15 }, (_, i) => i + 1).filter((id) => ![8, solid, stripe].includes(id));
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));[remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+    const rack = Array.from({ length: 15 }, (_, i) => i === 4 ? 8 : i === 10 ? solid : i === 14 ? stripe : remaining.pop());
     const spacing = TABLE.radius * 2 + 0.006;
     let index = 0;
     for (let row = 0; row < 5; row++) {
@@ -28,32 +34,26 @@ export class PoolPhysics {
 
   shoot(angle, power, spin = {}) {
     if (this.moving || this.cue.pocketed) return false;
-    const contact = clampSpin(spin);
-    const spinFactor = 2.5 * MAX_TIP_OFFSET;
-    // The power budget is shared by translation and rotation on off-center hits.
-    const speed = (3 + Math.max(0, Math.min(1, power)) * 22) / Math.sqrt(1 + 0.4 * spinFactor ** 2 * (contact.x ** 2 + contact.y ** 2));
-    this.cue.vx = Math.sin(angle) * speed;
-    this.cue.vz = -Math.cos(angle) * speed;
-    this.cue.wx = this.cue.vz / TABLE.radius * spinFactor * contact.y;
-    this.cue.wz = -this.cue.vx / TABLE.radius * spinFactor * contact.y;
-    this.cue.wy = speed / TABLE.radius * spinFactor * contact.x;
+    Object.assign(this.cue, strikeMotion(angle, power, spin));
     return true;
   }
 
   pocket(ball, pocket) {
     ball.pocketed = true;
     Object.assign(ball, REST_MOTION);
-    this.onEvent({ type: 'pocket', id: ball.id, pocket });
+    const pocketIndex = POCKETS.findIndex((p) => Math.hypot(p.x - pocket.x, p.z - pocket.z) < 1e-6);
+    this.onEvent({ type: 'pocket', id: ball.id, pocket, pocketIndex, step: this.stepNumber });
   }
 
   step(dt) {
+    this.stepNumber++;
     const r = TABLE.radius;
     for (const b of this.balls) {
       if (b.pocketed) continue;
       advanceBall(b, dt);
       const pocket = POCKETS.find((p) => Math.hypot(b.x - p.x, b.z - p.z) < p.captureRadius);
       if (pocket) { this.pocket(b, pocket); continue; }
-      for (const segment of CUSHION_SEGMENTS) {
+      for (const [rail, segment] of CUSHION_SEGMENTS.entries()) {
         const contact = closestPoint(segment, b.x, b.z);
         const dx = b.x - contact.x, dz = b.z - contact.z;
         const distance = Math.hypot(dx, dz);
@@ -63,9 +63,14 @@ export class PoolPhysics {
         b.z += nz * (r - distance + 0.000001);
         const incoming = b.vx * nx + b.vz * nz;
         if (incoming < 0) {
-          this.onEvent({ type: 'rail', speed: -incoming });
+          this.onEvent({ type: 'rail', id: b.id, rail, speed: -incoming, step: this.stepNumber });
           cushionImpulse(b, nx, nz, incoming);
         }
+      }
+      if (Math.abs(b.x) > TABLE.width / 2 + 0.9 || Math.abs(b.z) > TABLE.length / 2 + 0.9) {
+        this.onEvent({ type: 'offTable', id: b.id, step: this.stepNumber });
+        const nearest = POCKETS.reduce((a, p) => Math.hypot(p.x - b.x, p.z - b.z) < Math.hypot(a.x - b.x, a.z - b.z) ? p : a);
+        this.pocket(b, nearest);
       }
     }
 
@@ -87,6 +92,7 @@ export class PoolPhysics {
           b.x += nx * correction; b.z += nz * correction;
           const relative = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz;
           if (relative <= 0) continue;
+          this.onEvent({ type: 'contact', a: a.id, b: b.id, speed: relative, step: this.stepNumber });
           const impulse = relative * 0.965;
           a.vx -= impulse * nx; a.vz -= impulse * nz;
           b.vx += impulse * nx; b.vz += impulse * nz;
@@ -109,43 +115,5 @@ export class PoolPhysics {
     }
     if (!position) throw new Error('No clear position for the cue ball.');
     Object.assign(this.cue, position, REST_MOTION, { pocketed: false });
-  }
-}
-
-export class EightBallGame {
-  constructor() { this.reset(); }
-  reset() {
-    this.currentPlayer = 0;
-    this.groups = [null, null];
-    this.pocketed = new Set();
-    this.shotNumber = 1;
-    this.winner = null;
-  }
-  remaining(player) {
-    const group = this.groups[player];
-    return group ? Array.from({ length: 7 }, (_, i) => i + (group === 'solids' ? 1 : 9)).filter((id) => !this.pocketed.has(id)) : [];
-  }
-  resolveShot(ids) {
-    if (this.winner !== null) return null;
-    const shooter = this.currentPlayer;
-    const scratch = ids.includes(0);
-    let blackLegal = false;
-    // Evaluate the 8 at the moment it falls, including earlier balls in this shot.
-    for (const id of ids) {
-      if (id === 8) blackLegal = !!this.groups[shooter] && this.remaining(shooter).length === 0;
-      if (id > 0) this.pocketed.add(id);
-      if (!scratch && !this.groups[shooter] && groupOf(id)) {
-        this.groups[shooter] = groupOf(id);
-        this.groups[1 - shooter] = groupOf(id) === 'solids' ? 'stripes' : 'solids';
-      }
-    }
-    if (ids.includes(8)) {
-      this.winner = blackLegal && !scratch ? shooter : 1 - shooter;
-      return { winner: this.winner, scratch, reason: scratch ? 'scratch-on-eight' : blackLegal ? 'cleared' : 'early-eight' };
-    }
-    const keepTurn = !scratch && ids.some((id) => groupOf(id) && groupOf(id) === this.groups[shooter]);
-    if (!keepTurn) this.currentPlayer = 1 - shooter;
-    this.shotNumber++;
-    return { scratch, keepTurn, player: this.currentPlayer, groups: this.groups };
   }
 }

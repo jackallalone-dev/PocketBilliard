@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { TABLE, POCKETS, BALL_COLORS } from './physics.js';
 import { CUSHIONS, frameOpeningPoints, pocketSurroundPoints, boundaryDistance } from './table-geometry.js';
 import { clampSpin, MAX_TIP_OFFSET } from './spin.js';
+import { DEFAULT_AIM_AIDS } from './settings.js';
+import { cuePathPreview } from './aim-preview.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const BALL_TEXTURE_ORIENTATION = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
@@ -220,8 +222,14 @@ export class TableView {
     this.aimGroup.add(this.guide);
     this.targetGuide = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xf4d08b, transparent: true, opacity: 0.5, dashSize: 0.11, gapSize: 0.13 }));
     this.aimGroup.add(this.targetGuide);
-    this.ghost = new THREE.Mesh(new THREE.RingGeometry(TABLE.radius * 0.88, TABLE.radius, 32), new THREE.MeshBasicMaterial({ color: 0xffe2a2, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+    this.cueGuide = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x9de4e5, transparent: true, opacity: 0.8, dashSize: 0.1, gapSize: 0.12 }));
+    this.aimGroup.add(this.cueGuide);
+    this.ghost = new THREE.Mesh(new THREE.RingGeometry(TABLE.radius * 0.88, TABLE.radius, 32), new THREE.MeshBasicMaterial({ color: 0xf4eed7, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
     this.ghost.rotation.x = -Math.PI / 2;this.aimGroup.add(this.ghost);
+    for (const guide of [this.guide, this.targetGuide, this.cueGuide, this.ghost]) {
+      guide.material.depthTest = false;guide.material.depthWrite = false;
+      guide.renderOrder = 80;
+    }
     this.cueGroup = new THREE.Group();this.aimGroup.add(this.cueGroup);
     this.cueGroup.renderOrder = 100;
     // Build outward from the ball. Negative X rotation puts radiusTop at the
@@ -298,10 +306,12 @@ export class TableView {
     return changed;
   }
 
-  updateAim(balls, angle, power, visible, spin = {}) {
+  updateAim(balls, angle, power, visible, spin = {}, aids = DEFAULT_AIM_AIDS) {
     this.aimGroup.visible = visible;
     if (!visible) return;
     const cue = balls[0], dx = Math.sin(angle), dz = -Math.cos(angle);
+    this.guide.visible = aids.guideLine;
+    this.ghost.visible = aids.contactCircle;
     let distance = boundaryDistance(cue.x, cue.z, dx, dz);
     let target = null;
     for (const ball of balls) {
@@ -318,13 +328,22 @@ export class TableView {
     this.guide.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(cue.x, end.y, cue.z), end]);
     this.guide.computeLineDistances();
     this.ghost.position.set(end.x, 0.05, end.z);
-    this.targetGuide.visible = !!target;
+    this.targetGuide.visible = !!target && aids.targetLine;
+    this.cueGuide.visible = false;
     if (target) {
       const normal = new THREE.Vector3(target.x - end.x, 0, target.z - end.z).normalize();
       const start = new THREE.Vector3(target.x, end.y, target.z);
       this.targetGuide.geometry.dispose();
       this.targetGuide.geometry = new THREE.BufferGeometry().setFromPoints([start, start.clone().addScaledVector(normal, 1.6)]);
       this.targetGuide.computeLineDistances();
+      if (aids.cueLine) {
+        const points = cuePathPreview(balls, target, end, angle, power, spin);
+        if (points.length > 1) {
+          this.cueGuide.geometry.dispose();
+          this.cueGuide.geometry = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(p.x, end.y, p.z)));
+          this.cueGuide.computeLineDistances();this.cueGuide.visible = true;
+        }
+      }
     }
     const contact = clampSpin(spin);
     const side = contact.x * TABLE.radius * MAX_TIP_OFFSET;

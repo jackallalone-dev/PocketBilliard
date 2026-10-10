@@ -113,7 +113,7 @@ test('scratch recovery and playground retry clear residual angular motion', () =
   assert.equal(model.balls[1].wx, 0, 'arranging a ball must not retain spin');
 });
 
-test('spin pad maps top to follow and bottom to draw, clamps combined spin, and supports cancellation and keyboard input', () => {
+test('spin pad uses relative swipes without jumping on touch, clamps spin, and supports cancellation and keyboard input', () => {
   const element = new ControlElement();
   element.getBoundingClientRect = () => ({ left: 10, top: 20, width: 200, height: 200 });
   const output = { textContent: '' };
@@ -121,11 +121,17 @@ test('spin pad maps top to follow and bottom to draw, clamps combined spin, and 
   const control = new SpinControl(element, { canChange: () => allowed, onChange() {}, output });
   element.send('pointerdown', { clientX: 110, clientY: 185 });
   element.send('pointerup', { clientX: 110, clientY: 185 });
+  assert.deepEqual(control.value, { x: 0, y: 0 }, 'a tap anywhere must leave the contact point alone');
+  element.send('pointerdown', { clientX: 40, clientY: 55 });
+  element.send('pointermove', { clientX: 40, clientY: 120 });
+  element.send('pointerup', { clientX: 40, clientY: 120 });
   assert.deepEqual(control.value, { x: 0, y: -1 });assert.equal(output.textContent, 'Draw 100%');
-  element.send('pointerdown', { clientX: 110, clientY: 55 });
-  element.send('pointerup', { clientX: 110, clientY: 55 });
+  element.send('pointerdown', { clientX: 200, clientY: 180 });
+  assert.deepEqual(control.value, { x: 0, y: -1 }, 'a second swipe must start from the current spin');
+  element.send('pointerup', { clientX: 200, clientY: 50 });
   assert.deepEqual(control.value, { x: 0, y: 1 });
-  element.send('pointerdown', { clientX: 1000, clientY: 1000 });
+  element.send('pointerdown', { clientX: 100, clientY: 100 });
+  element.send('pointermove', { clientX: 1000, clientY: 1000 });
   assert.ok(Math.abs(Math.hypot(control.value.x, control.value.y) - 1) < 1e-8);
   element.send('pointercancel');assert.deepEqual(control.value, { x: 0, y: 1 });
   element.send('keydown', { key: 'Home' });element.send('keydown', { key: 'ArrowRight' });

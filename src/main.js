@@ -2,11 +2,12 @@ import './style.css';
 import './layout.css';
 import './playground.css';
 import './spin.css';
-import { PoolPhysics, EightBallGame, BALL_COLORS } from './physics.js';
+import './match.css';
+import { PoolPhysics, EightBallGame, BALL_COLORS, POCKETS } from './physics.js';
 import { TableView } from './table.js';
 import { GameAudio } from './audio.js';
 import { ShotControl } from './shot-control.js';
-import { loadPowerSide, savePowerSide } from './settings.js';
+import { loadPowerSide, savePowerSide, loadAimAids, saveAimAids } from './settings.js';
 import { AimWheel, TableAimControl, normalizeAngle } from './aim-controls.js';
 import { controlDockLayout } from './control-layout.js';
 import { PocketHistory } from './pocket-history.js';
@@ -14,6 +15,8 @@ import { Playground } from './playground.js';
 import { BallPlacementControl } from './ball-placement.js';
 import { SpinControl } from './spin-control.js';
 import { clampSpin, spinDescription } from './spin.js';
+import { ShotTracker, POCKET_NAMES } from './match-rules.js';
+import { CuePlacement } from './cue-placement.js';
 
 const $ = (id) => document.getElementById(id);
 const game = new EightBallGame();
@@ -40,10 +43,16 @@ let aimWheel;
 let ballPlacement;
 let spinControl;
 let selectedSpin = { x: 0, y: 0 };
+let aimAids = loadAimAids();
+let shotTracker = null;
+let shotCall = { ball: null, pocket: null, safety: false };
+let callDraft = { ...shotCall };
+let lastRuleMessage = '';
 let placementOffset = { x: 50, y: -58 };
 
 const physics = new PoolPhysics((event) => {
-  audio.play(event.type, event.speed || 1);
+  if (mode === 'match' && inShot) shotTracker?.record(event);
+  if (['collision', 'rail', 'pocket'].includes(event.type)) audio.play(event.type, event.speed || 1);
   if (event.type === 'pocket') {
     shotBalls.push(event.id);
     view.pocket(event.id, event.pocket);
@@ -54,11 +63,17 @@ const physics = new PoolPhysics((event) => {
     if (navigator.vibrate) navigator.vibrate(12);
   }
 });
+const cuePlacement = new CuePlacement(physics, game);
 
 function canInteract() { return !!view && !menuOpen && !contextLost && !document.hidden && !document.querySelector('dialog[open]'); }
 function canEdit() { return canInteract() && mode === 'playground' && playground.editing && !inShot; }
+function canPlaceCue() { return canInteract() && mode === 'match' && !inShot && game.winner === null && !game.pendingBreak && !!game.ballInHand && !game.placementConfirmed; }
+function canArrange() { return canEdit() || canPlaceCue(); }
+function placementModel() { return mode === 'playground' ? playground : cuePlacement; }
+function showAiming() { return !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null && !game.pendingBreak && (!game.ballInHand || game.placementConfirmed)); }
+function canAimNow() { return canInteract() && showAiming(); }
 function canTakeShot() {
-  return canInteract() && !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null);
+  return canAimNow() && (mode === 'playground' || game.callReady(shotCall));
 }
 
 const shotControl = new ShotControl($('shot-power'), {
@@ -75,29 +90,29 @@ function setAimAngle(value) {
 }
 
 tableAiming = new TableAimControl(container, {
-  canAim: () => canTakeShot() && !shotControl.charging && !aimWheel?.active,
+  canAim: () => canAimNow() && !shotControl.charging && !aimWheel?.active,
   getCue: () => physics.cue,
   getAngle: () => angle,
   setAngle: setAimAngle,
   pointFromScreen: (x, y) => view.pointFromScreen(x, y),
   hitCue: (x, y) => {
-    view.updateAim(physics.balls, angle, shotPower, true, selectedSpin);
+    view.updateAim(physics.balls, angle, shotPower, true, selectedSpin, aimAids);
     return view.hitCue(x, y, physics.cue);
   },
 });
 aimWheel = new AimWheel($('aim-wheel'), {
-  canAim: () => canTakeShot() && !shotControl.charging && !tableAiming.active,
+  canAim: () => canAimNow() && !shotControl.charging && !tableAiming.active,
   getAngle: () => angle,
   setAngle: setAimAngle,
 });
 
 ballPlacement = new BallPlacementControl(container, $('ball-drag-handle'), {
-  canEdit, model: playground,
+  canEdit: canArrange, model: cuePlacement,
   pointFromScreen: (x, y) => view.pointFromScreen(x, y),
   pickBall: (x, y) => {
     let nearest = null, distance = Infinity;
     for (const ball of physics.balls) {
-      if (ball.pocketed) continue;
+      if (ball.pocketed || (mode === 'match' && ball.id !== 0)) continue;
       const screen = view.ballToScreen(ball);
       const d = Math.hypot(x - screen.x, y - screen.y);
       if (d < Math.max(18, screen.radius + 8) && d < distance) { nearest = ball.id;distance = d; }
@@ -110,6 +125,7 @@ ballPlacement = new BallPlacementControl(container, $('ball-drag-handle'), {
     $('ball-placement-layer').classList.toggle('constrained', constrained);
     updatePlacementOverlay();
     updatePlaygroundUI();
+    updateMatchUI();
   },
 });
 
@@ -154,12 +170,13 @@ function layoutControlDock(frame) {
   tray.style.setProperty('--tray-top', `${trayLayout.top}px`);
   tray.style.setProperty('--tray-height', `${trayLayout.height}px`);
   updatePlacementOverlay();
+  updatePocketLabels();
 }
 
 function updatePlacementOverlay() {
   const layer = $('ball-placement-layer');
-  const selected = playground.selected;
-  layer.hidden = !canEdit() || selected.pocketed;
+  const selected = placementModel().selected;
+  layer.hidden = !canArrange() || selected.pocketed;
   if (layer.hidden) return;
   const area = $('table-area').getBoundingClientRect();
   const canvas = container.getBoundingClientRect();
@@ -188,7 +205,7 @@ function updatePlacementOverlay() {
 function updatePlaygroundUI() {
   const active = mode === 'playground';
   document.querySelector('.game').dataset.mode = mode;
-  document.querySelector('.game').dataset.editing = String(active && playground.editing);
+  document.querySelector('.game').dataset.editing = String(active && playground.editing || canPlaceCue());
   $('pg-arrange').setAttribute('aria-pressed', String(playground.editing));
   $('pg-shoot').setAttribute('aria-pressed', String(!playground.editing));
   $('pg-arrange').disabled = $('pg-shoot').disabled = !canInteract() || inShot;
@@ -197,7 +214,48 @@ function updatePlaygroundUI() {
   $('pg-retry').disabled = !active || !canInteract();
   $('playground-attempt').textContent = `TRY ${String(playground.attempts + (inShot ? 0 : 1)).padStart(2, '0')}`;
   $('restart-button').title = active ? 'Restore trick-shot setup' : 'Start a new game';
-  container.setAttribute('aria-label', active && playground.editing ? 'Arrange balls. Drag a ball or its move handle. Use the Balls palette to select a ball to add, then tap the cloth. Arrow keys nudge the selected ball.' : aimingLabel);
+  container.setAttribute('aria-label', canPlaceCue() ? 'Cue ball in hand. Drag the cue ball or its handle, then confirm the position. Object balls cannot be moved.' : active && playground.editing ? 'Arrange balls. Drag a ball or its move handle. Use the Balls palette to select a ball to add, then tap the cloth. Arrow keys nudge the selected ball.' : aimingLabel);
+}
+
+function updatePocketLabels() {
+  if (!view || menuOpen) return;
+  const rect = $('table-area').getBoundingClientRect();
+  for (const [index, label] of [...$('pocket-labels').children].entries()) {
+    const p = view.ballToScreen(POCKETS[index]);
+    label.style.left = `${p.x - rect.left}px`;label.style.top = `${p.y - rect.top}px`;
+    label.classList.toggle('called', !game.isBreak && !shotCall.safety && shotCall.pocket === index);
+  }
+}
+
+function updateMatchUI() {
+  const active = mode === 'match';
+  const placing = canPlaceCue();
+  const available = active && canAimNow();
+  const callLabel = shotCall.safety ? 'Safety declared' : game.callReady(shotCall) && !game.isBreak ? `Ball ${shotCall.ball} → P${shotCall.pocket + 1}` : 'Call shot';
+  $('match-call').textContent = callLabel;
+  $('match-call').hidden = game.isBreak || !!game.pendingBreak || game.winner !== null;
+  $('match-call').disabled = !available;
+  $('match-safety').hidden = game.isBreak || !!game.pendingBreak || game.winner !== null;
+  $('match-safety').disabled = !available;
+  $('match-safety').setAttribute('aria-pressed', String(shotCall.safety));
+  $('match-confirm').hidden = !placing;
+  $('match-place').hidden = !active || !game.ballInHand || !game.placementConfirmed || inShot || game.winner !== null;
+  $('match-place').disabled = !available;
+  $('match-break-choice').hidden = !game.pendingBreak;
+  $('match-break-choice').disabled = !canInteract();
+  let instruction;
+  if (game.winner !== null) instruction = `Player ${game.winner + 1} wins.`;
+  else if (game.pendingBreak) instruction = `Illegal break · Player ${game.currentPlayer + 1} chooses who breaks.`;
+  else if (inShot) instruction = game.isBreak ? 'Break in motion.' : callLabel;
+  else if (game.ballInHand && !game.placementConfirmed) instruction = `${lastRuleMessage ? `${lastRuleMessage}. ` : ''}Place cue ${game.ballInHand === 'kitchen' ? 'behind the head string' : 'anywhere clear'}, then confirm.`;
+  else if (game.isBreak) instruction = 'Break: pocket a ball or send 4 object balls to rails.';
+  else if (game.ballInHand === 'kitchen') instruction = 'First hit must be outside the kitchen. Call your shot.';
+  else instruction = shotCall.safety ? 'Safety: your turn ends after this shot.' : game.callReady(shotCall) ? callLabel : 'Call a ball and pocket, or declare Safety.';
+  $('match-instruction').textContent = instruction;
+  $('match-settings').hidden = !active || menuOpen;
+  $('match-concede').disabled = !active || inShot || game.winner !== null || !!game.pendingBreak;
+  $('match-stalemate').disabled = !active || inShot || game.winner !== null || !game.stalemateEligible;
+  updatePocketLabels();
 }
 
 function clearPocketHistory() {
@@ -219,11 +277,12 @@ function enterMode(nextMode) {
   if (!view || contextLost) return;
   cancelGestures();
   if (nextMode !== mode) {
-    sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], settleTime, angle, spin: { ...selectedSpin }, history: [...pocketHistory.ids] };
-    const session = sessions[nextMode] || { balls: playground.balls, inShot: false, shotBalls: [], settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [] };
+    sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], tracker: shotTracker, call: { ...shotCall }, step: physics.stepNumber, settleTime, angle, spin: { ...selectedSpin }, history: [...pocketHistory.ids] };
+    const session = sessions[nextMode] || { balls: playground.balls, inShot: false, shotBalls: [], tracker: null, call: {}, step: 0, settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [] };
     mode = nextMode;
     physics.balls = session.balls;
     inShot = session.inShot;shotBalls = [...session.shotBalls];settleTime = session.settleTime;
+    shotTracker = session.tracker;shotCall = { ...session.call };physics.stepNumber = session.step;
     setAimAngle(session.angle);
     setSelectedSpin(session.spin);
     pocketHistory.ids = [...session.history];renderPocketHistory();
@@ -265,9 +324,17 @@ applyPowerSide(loadPowerSide());
 for (const input of document.querySelectorAll('input[name="power-side"]')) {
   input.addEventListener('change', () => { if (input.checked) applyPowerSide(savePowerSide(input.value)); });
 }
+for (const input of document.querySelectorAll('[data-aim-aid]')) {
+  input.checked = aimAids[input.dataset.aimAid];
+  input.addEventListener('change', () => {
+    aimAids = saveAimAids({ ...aimAids, [input.dataset.aimAid]: input.checked });
+    aimDirty = true;
+  });
+}
 
 function openDialog(id) {
   cancelGestures();
+  if (id === 'restart-dialog') $('restart-breaker').value = String(1 - game.breaker);
   $(id).showModal();
   updateUI();
 }
@@ -323,10 +390,11 @@ function updateUI(message) {
   }
   const disabled = !canTakeShot();
   shotControl.setDisabled(disabled, inShot ? 'ROLLING' : mode === 'playground' && playground.editing ? 'EDIT' : mode === 'match' && game.winner !== null ? 'OVER' : 'WAIT');
-  aimWheel.setDisabled(disabled);
-  $('spin-button').disabled = disabled;
-  if (disabled) tableAiming.cancel();
-  if (!canEdit()) ballPlacement.cancel();
+  aimWheel.setDisabled(!canAimNow());
+  $('spin-button').disabled = !canAimNow();
+  if (!canAimNow()) tableAiming.cancel();
+  if (!canArrange()) ballPlacement.cancel();
+  ballPlacement.model = placementModel();
   $('shot-count').textContent = mode === 'playground' ? `TRY ${String(playground.attempts + 1).padStart(2, '0')}` : `SHOT ${String(game.shotNumber).padStart(2, '0')}`;
   const status = $('turn-status');
   status.replaceChildren();
@@ -339,7 +407,7 @@ function updateUI(message) {
     status.append(strong, document.createTextNode(message || (game.winner !== null ? ' wins. What a game.' : inShot ? ' is at the table.' : game.shotNumber === 1 ? ', break the ice.' : ', the table is yours.')));
   }
   $('table-hint').textContent = inShot ? 'Let the good times roll' : mode === 'playground' && playground.editing ? 'Drag a ball or its move handle' : 'Tap the table or drag to aim';
-  updatePlaygroundUI();updatePlacementOverlay();
+  updatePlaygroundUI();updatePlacementOverlay();updateMatchUI();
 }
 
 function finishShot() {
@@ -350,26 +418,59 @@ function finishShot() {
     toast(shotBalls.includes(0) ? 'Cue ball returned. Retry setup or keep shooting.' : 'Try another shot, or restore your setup.');
     return;
   }
-  const result = game.resolveShot(shotBalls);
+  const result = game.resolveShot(shotTracker.report());
+  shotTracker = null;
+  shotCall = { ball: null, pocket: null, safety: false };
   setSelectedSpin({ x: 0, y: 0 });
-  if (result.scratch && result.winner === undefined) physics.placeCue();
-  if (result.winner !== undefined) {
-    $('winner-title').textContent = `Player ${result.winner + 1} wins.`;
-    $('winner-detail').textContent = result.reason === 'cleared' ? 'Seven down, then the 8. A beautifully finished game.' : result.reason === 'scratch-on-eight' ? 'The cue ball followed the 8 into a pocket. That’s the game — and a perfect excuse for a rematch.' : 'The 8-ball went down a little too soon. There’s always the next round.';
-    openDialog('winner-dialog');
+  if (result.illegalBreak) {
+    showBreakChoice();
+  } else if (result.winner !== undefined) {
+    showWinner(result);
   } else {
+    const foulMessages = {
+      scratch: 'Scratch', 'ball-off-table': 'Ball off table', 'no-contact': 'No object-ball contact',
+      'wrong-first-ball': 'Wrong first ball', 'no-rail': 'No rail or pocket after contact',
+      'head-string': 'Cue not behind head string', 'kitchen-contact': 'First object ball was inside the kitchen',
+      'close-double-hit': 'Close cue/object-ball hit requires a 45° approach',
+    };
+    lastRuleMessage = result.foul ? foulMessages[result.foul] : '';
+    if (game.ballInHand) cuePlacement.prepare();
     const name = `Player ${game.currentPlayer + 1}`;
-    toast(result.scratch ? `Scratch · ${name}, your turn` : result.keepTurn ? `Nicely done. ${name} shoots again` : `Pass it over · ${name}’s turn`);
+    toast(result.foul ? `${lastRuleMessage} · ${name} has ball in hand` : result.keepTurn ? `${name} shoots again. Call the next shot.` : `${result.safety ? 'Safety' : 'Pass it over'} · ${name}’s turn`);
     if (!result.keepTurn && navigator.vibrate) navigator.vibrate([20, 35, 20]);
   }
   aimDirty = true;
-  updateUI(result.scratch && result.winner === undefined ? ', your turn. Cue ball returned.' : undefined);
+  updateUI();
+}
+
+function showWinner(result) {
+  const reasons = {
+    cleared: 'The called 8-ball was pocketed legally after clearing the group.',
+    'eight-on-break': 'The 8 went down on a legal break. Under UPA rules, that wins the game.',
+    'eight-on-foul': 'The 8-ball was pocketed on a foul. The opponent wins.',
+    'eight-off-table': 'The 8-ball left the playing surface. The opponent wins.',
+    'wrong-eight-pocket': 'The 8-ball did not go into its called pocket.',
+    'early-eight': 'The 8-ball fell before the shooter was legally on the 8.',
+    conceded: 'The other player conceded the game.',
+  };
+  $('winner-title').textContent = `Player ${result.winner + 1} wins.`;
+  $('winner-detail').textContent = reasons[result.reason];
+  openDialog('winner-dialog');
+}
+
+function showBreakChoice() {
+  if (!game.pendingBreak) return;
+  $('break-detail').textContent = `No numbered ball was pocketed and fewer than four object balls reached rails. Player ${game.pendingBreak.chooser + 1}, choose whether to break the new rack or ask Player ${game.pendingBreak.offender + 1} to break again.`;
+  $('break-self').textContent = `Player ${game.pendingBreak.chooser + 1} breaks`;
+  $('break-again').textContent = `Player ${game.pendingBreak.offender + 1} breaks again`;
+  openDialog('break-dialog');
 }
 
 function takeShot(power = shotPower) {
   if (!canTakeShot() || shotControl.charging || tableAiming.active || aimWheel.active || ballPlacement.active || power <= 0) return;
   audio.unlock();
   if (!physics.shoot(angle, power, selectedSpin)) return;
+  shotTracker = mode === 'match' ? new ShotTracker(physics.balls, shotCall, angle) : null;
   if (mode === 'playground') {
     if (playground.attempts === 0) { playground.setupAngle = angle;playground.setupSpin = { ...selectedSpin }; }
     playground.attempts++;
@@ -382,15 +483,46 @@ function takeShot(power = shotPower) {
   updateUI();
 }
 
-function resetGame() {
-  if (mode === 'playground') { restorePlayground();return; }
+function startMatchRack(breaker) {
   cancelGestures();
   for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
-  physics.reset();game.reset();view.resetBalls(physics.balls);
+  physics.reset();game.reset(breaker);view.resetBalls(physics.balls);
+  shotCall = { ball: null, pocket: null, safety: false };shotTracker = null;lastRuleMessage = '';
   setAimAngle(0);inShot = false;shotBalls = [];settleTime = 0;aimDirty = true;
   setSelectedSpin({ x: 0, y: 0 });
   pocketHistory.reset();renderPocketHistory();$('pocket-announcement').textContent = '';
-  updateUI();toast('Fresh rack. Player 1, you’re up.');
+  updateUI();toast(`Fresh rack. Player ${game.currentPlayer + 1}, place your cue ball.`);
+}
+
+function resetGame() {
+  if (mode === 'playground') { restorePlayground();return; }
+  startMatchRack(Number($('restart-breaker').value));
+}
+
+function updateCallDraft() {
+  for (const button of $('call-balls').children) button.setAttribute('aria-pressed', String(Number(button.dataset.ball) === callDraft.ball));
+  for (const button of $('call-pockets').children) button.setAttribute('aria-pressed', String(Number(button.dataset.pocket) === callDraft.pocket));
+  $('confirm-call').disabled = !game.callReady({ ...callDraft, safety: false });
+}
+
+function openCallDialog() {
+  if (mode !== 'match' || !canAimNow() || game.isBreak) return;
+  const targets = game.targets();
+  callDraft = { ball: targets.includes(shotCall.ball) ? shotCall.ball : targets[0], pocket: shotCall.pocket ?? null, safety: false };
+  const balls = $('call-balls');balls.replaceChildren();
+  for (const id of targets) {
+    const button = document.createElement('button');button.dataset.ball = id;button.setAttribute('aria-label', `Call ball ${id}`);
+    const ball = document.createElement('span');ball.className = `tray-ball assigned${id > 8 ? ' stripe' : ''}`;
+    ball.style.setProperty('--ball-color', BALL_COLORS[id]);
+    const number = document.createElement('span');number.textContent = id;ball.appendChild(number);button.appendChild(ball);
+    button.addEventListener('click', () => { callDraft.ball = id;updateCallDraft(); });balls.appendChild(button);
+  }
+  const pockets = $('call-pockets');pockets.replaceChildren();
+  POCKET_NAMES.forEach((name, index) => {
+    const button = document.createElement('button');button.dataset.pocket = index;button.textContent = name;
+    button.addEventListener('click', () => { callDraft.pocket = index;updateCallDraft(); });pockets.appendChild(button);
+  });
+  updateCallDraft();openDialog('call-dialog');
 }
 
 function openBallPalette() {
@@ -426,33 +558,35 @@ function removeSelectedBall() {
 }
 
 for (const element of [container, $('ball-drag-handle')]) element.addEventListener('keydown', (event) => {
-  if (!canEdit() || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete', 'Backspace', 'Escape'].includes(event.key)) return;
+  if (!canArrange() || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete', 'Backspace', 'Escape'].includes(event.key)) return;
   event.preventDefault();event.stopPropagation();
   if (event.key === 'Escape') { ballPlacement.cancel();return; }
   if (event.key === 'Delete' || event.key === 'Backspace') { removeSelectedBall();return; }
-  if (ballPlacement.active || playground.selected.pocketed) return;
-  const screen = view.ballToScreen(playground.selected);
+  const model = placementModel();
+  if (ballPlacement.active || model.selected.pocketed) return;
+  const screen = view.ballToScreen(model.selected);
   const step = event.shiftKey ? 0.5 : 2;
   const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
   const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
   const point = view.pointFromScreen(screen.x + dx, screen.y + dy);
-  if (point) playground.move(playground.selectedId, point.x, point.z);
+  if (point) model.move(model.selectedId, point.x, point.z);
   aimDirty = true;updatePlacementOverlay();
 });
 
 window.addEventListener('keydown', (event) => {
   if (document.querySelector('dialog[open]') || document.activeElement === $('pocketed-balls') || ['INPUT', 'BUTTON', 'A'].includes(document.activeElement?.tagName)) return;
   if (event.code === 'Escape') { cancelGestures();return; }
-  if (!canTakeShot() || shotControl.charging || tableAiming.active || aimWheel.active) return;
+  if (!canAimNow() || shotControl.charging || tableAiming.active || aimWheel.active) return;
   if (event.code === 'Space') {
     event.preventDefault();
     if (!event.repeat) {
-      if (shotPower > 0) takeShot();
+      if (!canTakeShot()) openCallDialog();
+      else if (shotPower > 0) takeShot();
       else toast('Pull the side control, or use ↑ / ↓ for power.');
     }
   }
   if (['ArrowUp', 'ArrowDown'].includes(event.code)) {
-    event.preventDefault();shotControl.setPower(shotPower + (event.code === 'ArrowUp' ? 0.05 : -0.05));
+    event.preventDefault();if (canTakeShot()) shotControl.setPower(shotPower + (event.code === 'ArrowUp' ? 0.05 : -0.05));
   }
   if (['ArrowLeft', 'ArrowRight'].includes(event.code)) {
     event.preventDefault();setAimAngle(angle + (event.code === 'ArrowLeft' ? -1 : 1) * (event.shiftKey ? 0.002 : 0.012));
@@ -480,7 +614,53 @@ $('pg-clear').addEventListener('click', () => {
   cancelGestures();playground.clear();clearPocketHistory();aimDirty = true;updateUI();
   toast('Clear table. Choose balls to build your shot.');
 });
-$('spin-button').addEventListener('click', () => { if (canTakeShot()) openDialog('spin-dialog'); });
+$('spin-button').addEventListener('click', () => { if (canAimNow()) openDialog('spin-dialog'); });
+$('match-confirm').addEventListener('click', () => {
+  if (!canPlaceCue() || ballPlacement.active) return;
+  if (cuePlacement.confirm()) { aimDirty = true;lastRuleMessage = '';updateUI(); }
+});
+$('match-place').addEventListener('click', () => {
+  if (mode !== 'match' || !canAimNow() || !game.ballInHand) return;
+  cancelGestures();game.placementConfirmed = false;cuePlacement.prepare();aimDirty = true;updateUI();
+});
+$('match-call').addEventListener('click', openCallDialog);
+$('confirm-call').addEventListener('click', () => {
+  if (mode !== 'match' || !game.callReady({ ...callDraft, safety: false })) return;
+  shotCall = { ...callDraft, safety: false };$('call-dialog').close();aimDirty = true;updateUI();
+});
+$('match-safety').addEventListener('click', () => {
+  if (mode !== 'match' || !canAimNow() || game.isBreak) return;
+  cancelGestures();shotCall = { ball: null, pocket: null, safety: !shotCall.safety };aimDirty = true;updateUI();
+});
+$('match-break-choice').addEventListener('click', showBreakChoice);
+$('break-dialog').addEventListener('cancel', (event) => event.preventDefault());
+for (const [id, choice] of [['break-self', 'chooser'], ['break-again', 'offender']]) $(id).addEventListener('click', () => {
+  if (mode !== 'match' || !game.pendingBreak) return;
+  const player = game.pendingBreak[choice];
+  if (game.chooseBreak(player)) startMatchRack(player);
+});
+$('match-concede').addEventListener('click', () => {
+  if (mode !== 'match' || inShot || game.winner !== null) return;
+  $('settings-dialog').close();
+  $('concede-detail').textContent = `Player ${game.currentPlayer + 1} will concede this game to Player ${2 - game.currentPlayer}.`;
+  openDialog('concede-dialog');
+});
+$('confirm-concede').addEventListener('click', () => {
+  if (mode !== 'match' || inShot) return;
+  const result = game.concede();$('concede-dialog').close();
+  if (result) { showWinner(result);aimDirty = true; }
+});
+$('match-stalemate').addEventListener('click', () => {
+  if (mode !== 'match' || inShot || !game.stalemateEligible) return;
+  $('settings-dialog').close();$('stalemate-p1').checked = $('stalemate-p2').checked = false;
+  $('confirm-stalemate').disabled = true;openDialog('stalemate-dialog');
+});
+for (const id of ['stalemate-p1', 'stalemate-p2']) $(id).addEventListener('change', () => {
+  $('confirm-stalemate').disabled = !$('stalemate-p1').checked || !$('stalemate-p2').checked;
+});
+$('confirm-stalemate').addEventListener('click', () => {
+  if (mode === 'match' && game.stalemateEligible && $('stalemate-p1').checked && $('stalemate-p2').checked) startMatchRack(1 - game.breaker);
+});
 for (const button of document.querySelectorAll('[data-spin-x]')) {
   button.addEventListener('click', () => {
     if (!canChangeSpin()) return;
@@ -489,14 +669,14 @@ for (const button of document.querySelectorAll('[data-spin-x]')) {
   });
 }
 $('confirm-restart').addEventListener('click', resetGame);
-$('play-again').addEventListener('click', resetGame);
+$('play-again').addEventListener('click', () => startMatchRack(1 - game.breaker));
 for (const button of document.querySelectorAll('[data-close]')) button.addEventListener('click', () => $(button.dataset.close).close());
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => {
   if (dialog.id === 'spin-dialog') spinControl.cancel();
   updateUI();
 });
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('click', (event) => {
-  if (event.target !== dialog) return;
+  if (event.target !== dialog || dialog.id === 'break-dialog') return;
   const rect = dialog.getBoundingClientRect();
   if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
 });
@@ -526,6 +706,7 @@ try {
     if (inShot && !document.querySelector('dialog[open]')) {
       accumulator += dt;
       while (accumulator >= fixedStep) {
+        if (mode === 'match') shotTracker?.sample(physics.balls);
         physics.step(fixedStep);accumulator -= fixedStep;
       }
       if (!physics.moving) {
@@ -535,7 +716,7 @@ try {
     } else accumulator = 0;
     const ballsChanged = view.sync(physics.balls, dt);
     const shouldRender = ballsChanged || aimDirty || view.needsRender;
-    if (aimDirty) { view.updateAim(physics.balls, angle, shotPower, !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null), selectedSpin);aimDirty = false; }
+    if (aimDirty) { view.updateAim(physics.balls, angle, shotPower, showAiming(), selectedSpin, aimAids);aimDirty = false; }
     if (shouldRender) view.render();
   };
   requestAnimationFrame(frame);
