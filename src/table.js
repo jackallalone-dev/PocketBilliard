@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { TABLE, POCKETS, BALL_COLORS } from './physics.js';
 import { CUSHIONS, frameOpeningPoints, pocketSurroundPoints, boundaryDistance } from './table-geometry.js';
+import { clampSpin, MAX_TIP_OFFSET } from './spin.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
+const BALL_TEXTURE_ORIENTATION = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+const BALL_ORIENTATION = new THREE.Quaternion();
 
 function feltTexture() {
   const canvas = document.createElement('canvas');
@@ -30,6 +33,12 @@ function ballTexture(id) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = id > 8 ? '#f8f4e7' : BALL_COLORS[id];
   ctx.fillRect(0, 0, 256, 128);
+  if (id === 0) {
+    ctx.fillStyle = '#b34b40';
+    for (const [x, y] of [[32, 64], [96, 64], [160, 64], [224, 64], [64, 24], [192, 104]]) {
+      ctx.beginPath();ctx.arc(x, y, 2.5, 0, Math.PI * 2);ctx.fill();
+    }
+  }
   if (id > 8) {
     ctx.fillStyle = BALL_COLORS[id];
     ctx.fillRect(0, 37, 256, 54);
@@ -276,17 +285,20 @@ export class TableView {
         this.falling.delete(ball.id);mesh.visible = true;mesh.scale.setScalar(1);
         const dx = ball.x - mesh.position.x, dz = ball.z - mesh.position.z;
         const distance = Math.hypot(dx, dz);
-        if (distance > 0.00001) {
-          changed = true;
-          mesh.rotateOnWorldAxis(new THREE.Vector3(dz, 0, -dx).normalize(), distance / TABLE.radius);
-        }
+        if (distance > 0.00001) changed = true;
+        if (ball.qw !== undefined) {
+          BALL_ORIENTATION.set(ball.qx, ball.qy, ball.qz, ball.qw).multiply(BALL_TEXTURE_ORIENTATION);
+          if (1 - Math.abs(mesh.quaternion.dot(BALL_ORIENTATION)) > 1e-10) {
+            mesh.quaternion.copy(BALL_ORIENTATION);changed = true;
+          }
+        } else if (distance > 0.00001) mesh.rotateOnWorldAxis(new THREE.Vector3(dz, 0, -dx).normalize(), distance / TABLE.radius);
         mesh.position.set(ball.x, TABLE.radius + 0.028, ball.z);
       }
     }
     return changed;
   }
 
-  updateAim(balls, angle, power, visible) {
+  updateAim(balls, angle, power, visible, spin = {}) {
     this.aimGroup.visible = visible;
     if (!visible) return;
     const cue = balls[0], dx = Math.sin(angle), dz = -Math.cos(angle);
@@ -314,7 +326,12 @@ export class TableView {
       this.targetGuide.geometry = new THREE.BufferGeometry().setFromPoints([start, start.clone().addScaledVector(normal, 1.6)]);
       this.targetGuide.computeLineDistances();
     }
-    this.cueGroup.position.set(cue.x - dx * power * 0.48, TABLE.radius + 0.028, cue.z - dz * power * 0.48);
+    const contact = clampSpin(spin);
+    const side = contact.x * TABLE.radius * MAX_TIP_OFFSET;
+    const height = contact.y * TABLE.radius * MAX_TIP_OFFSET;
+    const axial = Math.sqrt(TABLE.radius ** 2 - side ** 2 - height ** 2);
+    const pull = power * 0.48 + axial - TABLE.radius;
+    this.cueGroup.position.set(cue.x - dx * pull - dz * side, TABLE.radius + 0.028 + height, cue.z - dz * pull + dx * side);
     this.cueGroup.rotation.y = -angle;
   }
 

@@ -1,4 +1,5 @@
 export const normalizeAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
+const FINE_AIM_STEP = 0.0005;
 
 export class TableAimControl {
   constructor(element, { canAim, getCue, getAngle, setAngle, pointFromScreen, hitCue }) {
@@ -75,7 +76,7 @@ export class AimWheel {
     element.addEventListener('keydown', (event) => this.keydown(event));
     element.addEventListener('wheel', (event) => {
       event.preventDefault();
-      if (!this.disabled && !this.active && this.canAim()) this.adjust(Math.max(-30, Math.min(30, event.deltaY)) * 0.0005);
+      if (!this.disabled && !this.active && this.canAim()) this.adjust(Math.max(-30, Math.min(30, event.deltaY)) * FINE_AIM_STEP / 4);
     }, { passive: false });
     element.addEventListener('contextmenu', (event) => event.preventDefault());
     this.render(0);
@@ -86,7 +87,7 @@ export class AimWheel {
   render(angle) {
     const degrees = ((angle * 180 / Math.PI) % 360 + 360) % 360;
     const label = (Math.round(degrees * 10) % 3600 / 10).toFixed(1);
-    this.element.style.setProperty('--wheel-offset', `${angle * 180 / Math.PI * 3}px`);
+    this.element.style.setProperty('--wheel-offset', `${angle * 180 / Math.PI * 12}px`);
     this.element.setAttribute('aria-valuenow', label);
     this.element.setAttribute('aria-valuetext', `${label} degrees`);
     this.element.setAttribute('aria-disabled', String(this.disabled));
@@ -119,7 +120,7 @@ export class AimWheel {
     event.preventDefault();
     const delta = event.clientY - this.drag.y;
     this.drag.y = event.clientY;
-    this.adjust(delta * 0.002);
+    this.adjust(delta * FINE_AIM_STEP);
   }
 
   cancel() {
@@ -135,6 +136,6 @@ export class AimWheel {
     event.stopPropagation();
     if (event.key === 'Escape') { this.cancel();return; }
     if (this.disabled || this.active || !this.canAim()) return;
-    this.adjust((['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1) * (event.shiftKey ? 0.0005 : 0.002));
+    this.adjust((['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1) * FINE_AIM_STEP * (event.shiftKey ? 0.25 : 1));
   }
 }

@@ -1,8 +1,10 @@
 import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
+import { REST_MOTION, REST_ORIENTATION } from './ball-motion.js';
+import { clampSpin } from './spin.js';
 
 const MARGIN = 0.008;
 const SEPARATION = TABLE.radius * 2 + MARGIN;
-const copyBalls = (balls) => balls.map((ball) => ({ ...ball, vx: 0, vz: 0 }));
+const copyBalls = (balls) => balls.map((ball) => ({ ...ball, ...REST_MOTION }));
 
 export function legalBallPosition(balls, id, x, z) {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
@@ -56,7 +58,7 @@ export function freeBallPosition(balls, id, targetX, targetZ) {
 
 export class Playground {
   constructor() {
-    this.balls = Array.from({ length: 16 }, (_, id) => ({ id, x: 0, z: id === 0 ? TABLE.headSpot : 0, vx: 0, vz: 0, pocketed: id !== 0 }));
+    this.balls = Array.from({ length: 16 }, (_, id) => ({ id, x: 0, z: id === 0 ? TABLE.headSpot : 0, ...REST_MOTION, ...REST_ORIENTATION, pocketed: id !== 0 }));
     this.editing = true;
     this.selectedId = 0;
     this.attempts = 0;
@@ -64,6 +66,7 @@ export class Playground {
     this.move(9, 1.5, -3.6);
     this.setup = copyBalls(this.balls);
     this.setupAngle = 0;
+    this.setupSpin = { x: 0, y: 0 };
   }
 
   get selected() { return this.balls.find((ball) => ball.id === this.selectedId); }
@@ -74,36 +77,37 @@ export class Playground {
     if (!ball) return null;
     const point = freeBallPosition(this.balls, id, x, z);
     if (!point) return null;
-    Object.assign(ball, point, { vx: 0, vz: 0, pocketed: false });
+    Object.assign(ball, point, REST_MOTION, { pocketed: false });
     return point;
   }
 
   removeSelected() {
     if (!this.editing || this.selectedId === 0 || !this.selected || this.selected.pocketed) return false;
     this.selected.pocketed = true;
-    this.selected.vx = this.selected.vz = 0;
+    Object.assign(this.selected, REST_MOTION);
     this.selectedId = 0;
     return true;
   }
 
   clear() {
     if (!this.editing) return false;
-    for (const ball of this.balls) Object.assign(ball, { x: 0, z: ball.id === 0 ? TABLE.headSpot : 0, vx: 0, vz: 0, pocketed: ball.id !== 0 });
+    for (const ball of this.balls) Object.assign(ball, REST_MOTION, REST_ORIENTATION, { x: 0, z: ball.id === 0 ? TABLE.headSpot : 0, pocketed: ball.id !== 0 });
     this.selectedId = 0;
     return true;
   }
 
-  commit(angle) {
+  commit(angle, spin = {}) {
     if (!this.editing || this.balls[0].pocketed) return false;
     this.setup = copyBalls(this.balls);
     this.setupAngle = angle;
+    this.setupSpin = clampSpin(spin);
     this.editing = false;
     this.attempts = 0;
     return true;
   }
 
   restore() {
-    for (let i = 0; i < this.balls.length; i++) Object.assign(this.balls[i], this.setup[i], { vx: 0, vz: 0 });
+    for (let i = 0; i < this.balls.length; i++) Object.assign(this.balls[i], this.setup[i], REST_MOTION);
     if (this.selected.pocketed) this.selectedId = 0;
     return this.setupAngle;
   }

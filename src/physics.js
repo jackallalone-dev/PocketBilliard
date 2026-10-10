@@ -1,4 +1,6 @@
 import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
+import { REST_MOTION, REST_ORIENTATION, advanceBall, hasBallMotion, cushionImpulse, ballContactFriction } from './ball-motion.js';
+import { clampSpin, MAX_TIP_OFFSET } from './spin.js';
 export { TABLE, POCKETS } from './table-geometry.js';
 export const BALL_COLORS = ['#faf6e9', '#e9b52a', '#3776c4', '#d24c3f', '#8d58a5', '#df802e', '#39886c', '#924044', '#171c20', '#e9b52a', '#3776c4', '#d24c3f', '#8d58a5', '#df802e', '#39886c', '#924044'];
 export const groupOf = (id) => id > 0 && id < 8 ? 'solids' : id > 8 ? 'stripes' : null;
@@ -10,31 +12,37 @@ export class PoolPhysics {
   }
 
   reset() {
-    this.balls = [{ id: 0, x: 0, z: TABLE.headSpot, vx: 0, vz: 0, pocketed: false }];
+    this.balls = [{ id: 0, x: 0, z: TABLE.headSpot, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false }];
     const rack = [1, 10, 2, 3, 8, 11, 12, 4, 13, 5, 6, 14, 7, 15, 9];
     const spacing = TABLE.radius * 2 + 0.006;
     let index = 0;
     for (let row = 0; row < 5; row++) {
       for (let col = 0; col <= row; col++) {
-        this.balls.push({ id: rack[index++], x: (col - row / 2) * spacing, z: TABLE.footSpot - row * spacing * Math.sqrt(3) / 2, vx: 0, vz: 0, pocketed: false });
+        this.balls.push({ id: rack[index++], x: (col - row / 2) * spacing, z: TABLE.footSpot - row * spacing * Math.sqrt(3) / 2, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false });
       }
     }
   }
 
   get cue() { return this.balls[0]; }
-  get moving() { return this.balls.some((b) => !b.pocketed && Math.hypot(b.vx, b.vz) > 0); }
+  get moving() { return this.balls.some(hasBallMotion); }
 
-  shoot(angle, power) {
+  shoot(angle, power, spin = {}) {
     if (this.moving || this.cue.pocketed) return false;
-    const speed = 3 + Math.max(0, Math.min(1, power)) * 22;
+    const contact = clampSpin(spin);
+    const spinFactor = 2.5 * MAX_TIP_OFFSET;
+    // The power budget is shared by translation and rotation on off-center hits.
+    const speed = (3 + Math.max(0, Math.min(1, power)) * 22) / Math.sqrt(1 + 0.4 * spinFactor ** 2 * (contact.x ** 2 + contact.y ** 2));
     this.cue.vx = Math.sin(angle) * speed;
     this.cue.vz = -Math.cos(angle) * speed;
+    this.cue.wx = this.cue.vz / TABLE.radius * spinFactor * contact.y;
+    this.cue.wz = -this.cue.vx / TABLE.radius * spinFactor * contact.y;
+    this.cue.wy = speed / TABLE.radius * spinFactor * contact.x;
     return true;
   }
 
   pocket(ball, pocket) {
     ball.pocketed = true;
-    ball.vx = ball.vz = 0;
+    Object.assign(ball, REST_MOTION);
     this.onEvent({ type: 'pocket', id: ball.id, pocket });
   }
 
@@ -42,15 +50,7 @@ export class PoolPhysics {
     const r = TABLE.radius;
     for (const b of this.balls) {
       if (b.pocketed) continue;
-      const speed = Math.hypot(b.vx, b.vz);
-      if (speed > 0) {
-        const next = Math.max(0, speed - (0.55 + speed * 0.2) * dt);
-        const scale = next < 0.065 ? 0 : next / speed;
-        b.vx *= scale;
-        b.vz *= scale;
-        b.x += b.vx * dt;
-        b.z += b.vz * dt;
-      }
+      advanceBall(b, dt);
       const pocket = POCKETS.find((p) => Math.hypot(b.x - p.x, b.z - p.z) < p.captureRadius);
       if (pocket) { this.pocket(b, pocket); continue; }
       for (const segment of CUSHION_SEGMENTS) {
@@ -64,8 +64,7 @@ export class PoolPhysics {
         const incoming = b.vx * nx + b.vz * nz;
         if (incoming < 0) {
           this.onEvent({ type: 'rail', speed: -incoming });
-          b.vx -= 1.78 * incoming * nx;
-          b.vz -= 1.78 * incoming * nz;
+          cushionImpulse(b, nx, nz, incoming);
         }
       }
     }
@@ -91,6 +90,7 @@ export class PoolPhysics {
           const impulse = relative * 0.965;
           a.vx -= impulse * nx; a.vz -= impulse * nz;
           b.vx += impulse * nx; b.vz += impulse * nz;
+          ballContactFriction(a, b, nx, nz, impulse);
           if (pass === 0 && relative > 0.35) this.onEvent({ type: 'collision', speed: relative });
         }
       }
@@ -108,7 +108,7 @@ export class PoolPhysics {
       }
     }
     if (!position) throw new Error('No clear position for the cue ball.');
-    Object.assign(this.cue, position, { vx: 0, vz: 0, pocketed: false });
+    Object.assign(this.cue, position, REST_MOTION, { pocketed: false });
   }
 }
 

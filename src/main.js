@@ -1,6 +1,7 @@
 import './style.css';
 import './layout.css';
 import './playground.css';
+import './spin.css';
 import { PoolPhysics, EightBallGame, BALL_COLORS } from './physics.js';
 import { TableView } from './table.js';
 import { GameAudio } from './audio.js';
@@ -11,6 +12,8 @@ import { controlDockLayout } from './control-layout.js';
 import { PocketHistory } from './pocket-history.js';
 import { Playground } from './playground.js';
 import { BallPlacementControl } from './ball-placement.js';
+import { SpinControl } from './spin-control.js';
+import { clampSpin, spinDescription } from './spin.js';
 
 const $ = (id) => document.getElementById(id);
 const game = new EightBallGame();
@@ -35,6 +38,8 @@ let contextLost = false;
 let tableAiming;
 let aimWheel;
 let ballPlacement;
+let spinControl;
+let selectedSpin = { x: 0, y: 0 };
 let placementOffset = { x: 50, y: -58 };
 
 const physics = new PoolPhysics((event) => {
@@ -76,7 +81,7 @@ tableAiming = new TableAimControl(container, {
   setAngle: setAimAngle,
   pointFromScreen: (x, y) => view.pointFromScreen(x, y),
   hitCue: (x, y) => {
-    view.updateAim(physics.balls, angle, shotPower, true);
+    view.updateAim(physics.balls, angle, shotPower, true, selectedSpin);
     return view.hitCue(x, y, physics.cue);
   },
 });
@@ -108,11 +113,30 @@ ballPlacement = new BallPlacementControl(container, $('ball-drag-handle'), {
   },
 });
 
+function canChangeSpin() {
+  return !!view && !menuOpen && !contextLost && !inShot && $('spin-dialog').hasAttribute('open') && (mode === 'playground' ? !playground.editing : game.winner === null);
+}
+
+function setSelectedSpin(value) {
+  selectedSpin = clampSpin(value);
+  spinControl?.setValue(selectedSpin, false);
+  const button = $('spin-button');
+  button.style.setProperty('--spin-x', selectedSpin.x);
+  button.style.setProperty('--spin-y', selectedSpin.y);
+  button.setAttribute('aria-label', `Cue-ball spin: ${spinDescription(selectedSpin)}`);
+  button.title = spinDescription(selectedSpin);
+  aimDirty = true;
+}
+
+spinControl = new SpinControl($('spin-pad'), { canChange: canChangeSpin, onChange: setSelectedSpin, output: $('spin-value') });
+setSelectedSpin(selectedSpin);
+
 function cancelGestures() {
   shotControl.cancel();
   tableAiming.cancel();
   aimWheel.cancel();
   ballPlacement?.cancel();
+  spinControl?.cancel();
 }
 
 function layoutControlDock(frame) {
@@ -195,12 +219,13 @@ function enterMode(nextMode) {
   if (!view || contextLost) return;
   cancelGestures();
   if (nextMode !== mode) {
-    sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], settleTime, angle, history: [...pocketHistory.ids] };
-    const session = sessions[nextMode] || { balls: playground.balls, inShot: false, shotBalls: [], settleTime: 0, angle: 0, history: [] };
+    sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], settleTime, angle, spin: { ...selectedSpin }, history: [...pocketHistory.ids] };
+    const session = sessions[nextMode] || { balls: playground.balls, inShot: false, shotBalls: [], settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [] };
     mode = nextMode;
     physics.balls = session.balls;
     inShot = session.inShot;shotBalls = [...session.shotBalls];settleTime = session.settleTime;
     setAimAngle(session.angle);
+    setSelectedSpin(session.spin);
     pocketHistory.ids = [...session.history];renderPocketHistory();
     view.resetBalls(physics.balls);
   }
@@ -215,7 +240,7 @@ function setPlaygroundPhase(editing) {
   if (mode !== 'playground' || !canInteract() || inShot || playground.editing === editing) return;
   cancelGestures();
   if (editing) playground.editing = true;
-  else if (!playground.commit(angle)) return;
+  else if (!playground.commit(angle, selectedSpin)) return;
   clearPocketHistory();aimDirty = true;updateUI();
   toast(editing ? 'Arrange your shot. Drag a ball or its handle.' : 'Setup saved. Aim, pull, and release.');
 }
@@ -224,6 +249,7 @@ function restorePlayground() {
   if (mode !== 'playground' || !canInteract()) return;
   cancelGestures();
   setAimAngle(playground.restore());
+  setSelectedSpin(playground.setupSpin);
   inShot = false;shotBalls = [];settleTime = 0;
   clearPocketHistory();view.resetBalls(physics.balls);updateUI();
   toast('Setup restored. Give it another try.');
@@ -298,6 +324,7 @@ function updateUI(message) {
   const disabled = !canTakeShot();
   shotControl.setDisabled(disabled, inShot ? 'ROLLING' : mode === 'playground' && playground.editing ? 'EDIT' : mode === 'match' && game.winner !== null ? 'OVER' : 'WAIT');
   aimWheel.setDisabled(disabled);
+  $('spin-button').disabled = disabled;
   if (disabled) tableAiming.cancel();
   if (!canEdit()) ballPlacement.cancel();
   $('shot-count').textContent = mode === 'playground' ? `TRY ${String(playground.attempts + 1).padStart(2, '0')}` : `SHOT ${String(game.shotNumber).padStart(2, '0')}`;
@@ -324,6 +351,7 @@ function finishShot() {
     return;
   }
   const result = game.resolveShot(shotBalls);
+  setSelectedSpin({ x: 0, y: 0 });
   if (result.scratch && result.winner === undefined) physics.placeCue();
   if (result.winner !== undefined) {
     $('winner-title').textContent = `Player ${result.winner + 1} wins.`;
@@ -341,8 +369,11 @@ function finishShot() {
 function takeShot(power = shotPower) {
   if (!canTakeShot() || shotControl.charging || tableAiming.active || aimWheel.active || ballPlacement.active || power <= 0) return;
   audio.unlock();
-  if (!physics.shoot(angle, power)) return;
-  if (mode === 'playground') playground.attempts++;
+  if (!physics.shoot(angle, power, selectedSpin)) return;
+  if (mode === 'playground') {
+    if (playground.attempts === 0) { playground.setupAngle = angle;playground.setupSpin = { ...selectedSpin }; }
+    playground.attempts++;
+  }
   shotControl.cancel();
   audio.play('shoot', 3);
   shotBalls = [];inShot = true;settleTime = 0;
@@ -357,6 +388,7 @@ function resetGame() {
   for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
   physics.reset();game.reset();view.resetBalls(physics.balls);
   setAimAngle(0);inShot = false;shotBalls = [];settleTime = 0;aimDirty = true;
+  setSelectedSpin({ x: 0, y: 0 });
   pocketHistory.reset();renderPocketHistory();$('pocket-announcement').textContent = '';
   updateUI();toast('Fresh rack. Player 1, you’re up.');
 }
@@ -448,10 +480,21 @@ $('pg-clear').addEventListener('click', () => {
   cancelGestures();playground.clear();clearPocketHistory();aimDirty = true;updateUI();
   toast('Clear table. Choose balls to build your shot.');
 });
+$('spin-button').addEventListener('click', () => { if (canTakeShot()) openDialog('spin-dialog'); });
+for (const button of document.querySelectorAll('[data-spin-x]')) {
+  button.addEventListener('click', () => {
+    if (!canChangeSpin()) return;
+    spinControl.cancel();
+    setSelectedSpin({ x: Number(button.dataset.spinX), y: Number(button.dataset.spinY) });
+  });
+}
 $('confirm-restart').addEventListener('click', resetGame);
 $('play-again').addEventListener('click', resetGame);
 for (const button of document.querySelectorAll('[data-close]')) button.addEventListener('click', () => $(button.dataset.close).close());
-for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => updateUI());
+for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => {
+  if (dialog.id === 'spin-dialog') spinControl.cancel();
+  updateUI();
+});
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('click', (event) => {
   if (event.target !== dialog) return;
   const rect = dialog.getBoundingClientRect();
@@ -492,7 +535,7 @@ try {
     } else accumulator = 0;
     const ballsChanged = view.sync(physics.balls, dt);
     const shouldRender = ballsChanged || aimDirty || view.needsRender;
-    if (aimDirty) { view.updateAim(physics.balls, angle, shotPower, !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null));aimDirty = false; }
+    if (aimDirty) { view.updateAim(physics.balls, angle, shotPower, !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null), selectedSpin);aimDirty = false; }
     if (shouldRender) view.render();
   };
   requestAnimationFrame(frame);
@@ -509,6 +552,7 @@ try {
   $('loading-state').querySelector('p').textContent = 'This table needs WebGL. Try a current version of Safari, Chrome, or Firefox with hardware acceleration enabled.';
   shotControl.setDisabled(true);
   aimWheel.setDisabled(true);
+  $('spin-button').disabled = true;
   $('restart-button').disabled = true;
   $('menu-match').disabled = $('menu-playground').disabled = true;
   $('menu-status').textContent = 'The table needs WebGL. Open this page in a current browser with hardware acceleration enabled.';

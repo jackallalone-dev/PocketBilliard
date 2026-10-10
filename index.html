@@ -68,6 +68,7 @@
           </div>
           <section id="pocketed-panel" class="pocketed-panel" aria-label="Pocketed balls"><span class="pocketed-label" aria-hidden="true">DOWN</span><ol id="pocketed-balls" class="pocketed-list" tabindex="0" aria-label="Balls in pocketing order. Scroll to see all pocketed balls."></ol><span id="pocketed-empty" aria-label="No balls pocketed">—</span><span id="pocket-announcement" class="sr-only" aria-live="polite"></span></section>
           <div id="control-dock" class="control-dock" role="group" aria-label="Aiming and shooting controls">
+            <button id="spin-button" class="spin-button" aria-label="Cue-ball spin: center ball" title="Choose where the cue hits the white ball"><span class="mini-cue-ball" aria-hidden="true"><span></span></span><span>SPIN</span></button>
             <div id="shot-power" class="shot-power" role="slider" tabindex="0" aria-label="Shot power. Drag down and release to shoot." aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0 percent. Pull down to charge." aria-describedby="power-instructions" aria-disabled="true">
               <span class="power-label">POWER</span>
               <output id="power-value" aria-hidden="true">0<span>%</span></output>
@@ -97,6 +98,7 @@
       <div class="instruction"><span>03</span><div><h3>Save the 8 for last</h3><p>The first colored ball pocketed assigns solids or stripes. Clear your seven, then pocket the 8 to win. Sink it early or scratch on that shot, and the other player wins.</p></div></div>
       <div class="rules-note">Pocket your own ball to keep your turn; otherwise pass the device. A scratch ends your turn and returns the cue ball to a clear spot. Groups are assigned only on a scratch-free shot. No called pockets or first-contact fouls. On desktop, use ← / → to aim, ↑ / ↓ for power, and Space to shoot.</div>
       <div class="rules-note"><strong>Playground:</strong> choose Playground from the main menu. In Arrange, drag a ball or its offset handle, or use ＋ Balls to select a ball to place. Switch to Shoot to practice without turns or 8-ball penalties. Retry setup restores your saved arrangement. Open the menu by tapping the Pocket Club logo.</div>
+      <div class="rules-note"><strong>Cue-ball spin:</strong> tap SPIN above the power control. Hit below center for draw, above center for follow, or left/right for sidespin. Draw needs backspin remaining when the cue ball hits another ball; longer distances and softer shots wear it off.</div>
       <button class="primary-button" data-close="help-dialog">Let’s play <span>↗</span></button>
     </dialog>
     <dialog id="balls-dialog" class="modal small-modal" aria-labelledby="balls-title">
@@ -104,6 +106,16 @@
       <span class="eyebrow">BUILD YOUR SHOT</span><h1 id="balls-title">Pick a ball.</h1>
       <p class="modal-intro">Choose a ball, then tap the cloth to add it. Balls already on the table are selected for dragging.</p>
       <div id="ball-palette" class="ball-palette" role="group" aria-label="Available balls"></div>
+    </dialog>
+    <dialog id="spin-dialog" class="modal spin-modal" aria-labelledby="spin-title">
+      <button class="modal-close icon-button" data-close="spin-dialog" aria-label="Close spin control">×</button>
+      <span class="eyebrow">CHOOSE YOUR CONTACT POINT</span><h1 id="spin-title">Cue-ball spin.</h1>
+      <p class="modal-intro">View from behind the cue. Tap or drag the red dot to choose where the tip hits.</p>
+      <div class="spin-selector"><span class="spin-top">FOLLOW</span><span class="spin-left">LEFT</span><span class="spin-right">RIGHT</span><span class="spin-bottom">DRAW</span><div id="spin-pad" class="spin-pad" role="group" tabindex="0" aria-label="Cue-ball contact point" aria-describedby="spin-help"><span class="spin-safe-ring" aria-hidden="true"></span><span class="spin-crosshair" aria-hidden="true"></span><span class="spin-marker" aria-hidden="true"></span></div></div>
+      <output id="spin-value" class="spin-value" aria-live="polite">Center ball</output>
+      <div class="spin-presets" role="group" aria-label="Spin presets"><button data-spin-x="0" data-spin-y="0">Center</button><button data-spin-x="0" data-spin-y="-1">Draw ↓</button><button data-spin-x="0" data-spin-y="1">Follow ↑</button><button data-spin-x="-1" data-spin-y="0">Left ←</button><button data-spin-x="1" data-spin-y="0">Right →</button></div>
+      <p id="spin-help" class="rules-note">Bottom spin can pull the white ball back after contact; top spin makes it follow. Sidespin changes cushion rebounds. Strength depends on shot power and travel distance. The guide shows the initial path, not the spin-driven return. Arrow keys adjust the dot; Home centers it.</p>
+      <button class="primary-button" data-close="spin-dialog">Set the shot <span>↗</span></button>
     </dialog>
     <dialog id="settings-dialog" class="modal small-modal" aria-labelledby="settings-title">
       <button class="modal-close icon-button" data-close="settings-dialog" aria-label="Close settings">×</button>

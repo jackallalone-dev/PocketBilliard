@@ -60,13 +60,15 @@ test('fine-aim wheel gives small continuous changes across the angle boundary wi
   power.setPower(0.65);
   wheelElement.send('pointerdown');
   wheelElement.send('pointermove', { clientY: 110 });
+  assert.ok(Math.abs(state.angle - (Math.PI - 0.005)) < 1e-8, 'a ten-pixel drag should make only a small fine-aim adjustment');
+  wheelElement.send('pointermove', { clientY: 140 });
   assert.ok(Math.abs(state.angle - (-Math.PI + 0.01)) < 1e-8);
-  wheelElement.send('pointerup', { clientY: 110 });
+  wheelElement.send('pointerup', { clientY: 140 });
   assert.equal(state.power, 0.65);
   assert.equal(state.shots.length, 0);
   const before = state.angle;
   wheelElement.send('keydown', { key: 'ArrowRight', shiftKey: true });
-  assert.ok(Math.abs(normalizeAngle(state.angle - before) - 0.0005) < 1e-8);
+  assert.ok(Math.abs(normalizeAngle(state.angle - before) - 0.000125) < 1e-8);
 });
 
 test('table drag, aiming wheel, and shooting lock out conflicting gestures', () => {

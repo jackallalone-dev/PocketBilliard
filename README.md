@@ -26,6 +26,7 @@ The app opens on a **main menu**. Choose **Two-player 8-ball** or **Playground**
 - **Drag the cue:** grab the visible stick and move it around the cue ball to rotate your aim. Touching the rear of the stick preserves the current angle instead of flipping the shot.
 - **Fine-aim wheel:** drag the small wheel below the power control up/down for precise adjustments. Mouse scrolling and arrow keys also work on the wheel; Shift + arrow gives an even smaller step.
 - **Shoot:** pull down on the vertical power control beside the table, then release to shoot. A longer pull gives more power. Tapping alone does not shoot.
+- **Cue-ball spin:** tap **SPIN** above the power control. The white-ball selector is viewed from behind your cue: bottom contact adds draw/backspin, top contact adds follow/topspin, and left/right contact adds sidespin. Drag the dot for combinations, or choose a preset. The cue’s tip position and the small red-dot indicator show the selected contact point.
 - **Cancel a shot:** return your finger to the starting height or move it sideways before releasing. Switching apps, opening a dialog, or rotating the screen cancels an unfinished pull too.
 - **Left/right controls:** open **Settings** in the header and choose the control side. The power control and aiming wheel dock directly beside the table’s outer rail on that side, in portrait or landscape. The selection is saved on this device when browser storage is available.
 - **Pocketed-ball list:** a slim vertical tray sits beside the table, opposite the shooting and fine-aim controls. It mirrors automatically when you change control sides and shows numbered balls in pocketing order as they drop. Scroll the tray on shorter screens to see every ball. Cue-ball scratches are announced separately. A new game clears the tray.
@@ -43,9 +44,18 @@ The app opens on a **main menu**. Choose **Two-player 8-ball** or **Playground**
 2. In **Arrange**, drag a ball directly or drag its gold **move handle**. The handle sits away from the ball so your finger does not cover the placement. Balls stay inside the cushions and cannot overlap.
 3. Use **＋ Balls** to select any numbered ball. Tap empty cloth to add a selected off-table ball; selecting an existing ball reveals its handle. **Remove** deletes the selected object ball, and **Clear** leaves only the cue ball.
 4. Switch to **Shoot** to save the arrangement and practice using the normal aiming and power controls. Playground has no turns or early-8-ball penalties; a scratched cue ball returns to the table.
-5. **Retry setup** restores all balls and the saved aiming direction, even during a shot. Switch back to Arrange to change the setup. Setup storage lasts for the current page session.
+5. **Retry setup** restores all balls and the first attempt’s aiming direction and spin, even during a shot. Switch back to Arrange to change the setup. Setup storage lasts for the current page session.
 
 On desktop, focus the table or move handle and use arrow keys to nudge the selected ball. Hold Shift for smaller nudges. Escape, opening a dialog/menu, or a cancelled touch reverts an unfinished drag.
+
+## Practicing spin
+
+- **Draw:** place the cue ball a few ball-widths from an object ball, choose the bottom of the spin selector, and use medium-to-high power. Remaining backspin grips the cloth after impact and pulls the cue ball back.
+- **Follow:** choose a contact point above center to carry the cue ball forward after impact.
+- **Sidespin:** left/right spin changes the outgoing angle at a cushion. Combine it with draw or follow by moving the contact point diagonally.
+- Backspin wears off with travel and can become natural forward roll. A soft, long-distance shot may therefore follow instead of drawing. Center-ball shots also acquire natural roll from the cloth.
+- Match shots reset the selected contact point to center after settling. Playground retains the selection; Retry restores the first attempt’s spin.
+- The dotted guide previews the initial contact path, not the post-impact spin trajectory. Ball rotation is simulated alongside sliding/rolling cloth friction, cushion friction, and small ball-contact friction. This is a flat-table approximation; cue elevation, massé/swerve, squirt, jump shots, and miscues are not modeled.
 
 ## Build and test
 
@@ -63,6 +73,8 @@ Deploy the generated `dist/` directory to any static web host. The game uses Web
 - `src/table.js` — Three.js table, ball materials, aiming guides, and rendering
 - `src/table-geometry.js` — shared tapered cushion shapes, pocket openings, and aiming boundaries
 - `src/physics.js` — fixed-step ball physics and simplified 8-ball rules
+- `src/ball-motion.js` — angular motion, cloth friction, and spin-aware collision impulses
+- `src/spin.js`, `src/spin-control.js`, `src/spin.css` — contact-point mapping and touch/keyboard spin selection
 - `src/audio.js` — optional Web Audio effects
 - `src/shot-control.js` — drag-to-charge/release-to-shoot gestures and keyboard controls
 - `src/aim-controls.js` — touch aiming, cue dragging, and the fine-aim wheel
