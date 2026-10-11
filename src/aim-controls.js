@@ -10,6 +10,11 @@ export class TableAimControl {
     element.addEventListener('pointerup', (event) => {
       if (this.drag?.id !== event.pointerId) return;
       this.move(event);
+      if (this.drag && !this.drag.moved && this.drag.mode === 'table' && this.canAim()) {
+        const point = this.pointFromScreen(event.clientX, event.clientY);
+        const cue = this.getCue();
+        if (point && Math.hypot(point.x - cue.x, point.z - cue.z) >= 0.25) this.setAngle(Math.atan2(point.x - cue.x, cue.z - point.z));
+      }
       this.cancel();
     });
     element.addEventListener('pointercancel', (event) => { if (this.drag?.id === event.pointerId) this.cancel(); });
@@ -27,27 +32,28 @@ export class TableAimControl {
     const onCue = this.hitCue(event.clientX, event.clientY);
     this.drag = {
       id: event.pointerId, mode: onCue ? 'cue' : 'table', angle: this.getAngle(),
-      bearing: Math.atan2(point.x - cue.x, cue.z - point.z),
+      bearing: Math.hypot(point.x - cue.x, point.z - cue.z) >= 0.25 ? Math.atan2(point.x - cue.x, cue.z - point.z) : null,
+      x: event.clientX, y: event.clientY, moved: false,
     };
     this.element.classList.toggle('dragging-cue', onCue);
     this.element.focus({ preventScroll: true });
     this.element.setPointerCapture(event.pointerId);
-    // Grabbing the back of the stick must not aim toward that point and flip it.
-    if (!onCue) this.move(event);
+    // Wait to distinguish a tap from a swipe; touching never snaps the cue.
   }
 
   move(event) {
     if (!this.drag || event.pointerId !== this.drag.id) return;
     if (!this.canAim()) { this.cancel();return; }
     event.preventDefault();
+    if (!this.drag.moved && Math.hypot(event.clientX - this.drag.x, event.clientY - this.drag.y) < 6) return;
+    this.drag.moved = true;
     const point = this.pointFromScreen(event.clientX, event.clientY);
     if (!point) return;
     const cue = this.getCue();
     if (Math.hypot(point.x - cue.x, point.z - cue.z) < 0.25) return;
     const bearing = Math.atan2(point.x - cue.x, cue.z - point.z);
-    this.setAngle(this.drag.mode === 'cue'
-      ? normalizeAngle(this.drag.angle + normalizeAngle(bearing - this.drag.bearing))
-      : bearing);
+    if (this.drag.bearing === null) { this.drag.bearing = bearing;return; }
+    this.setAngle(normalizeAngle(this.drag.angle + normalizeAngle(bearing - this.drag.bearing)));
   }
 
   cancel() {

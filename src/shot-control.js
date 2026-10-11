@@ -1,3 +1,5 @@
+import { MAX_SHOT_POWER } from './spin.js';
+
 export class ShotControl {
   constructor(element, { canShoot, onChange, onShoot, onStart = () => {} }) {
     this.element = element;
@@ -25,7 +27,7 @@ export class ShotControl {
   get charging() { return this.drag !== null; }
 
   setPower(value) {
-    this.value = Math.max(0, Math.min(1, value));
+    this.value = Math.max(0, Math.min(MAX_SHOT_POWER, value));
     this.render();
     this.onChange(this.value);
   }
@@ -39,11 +41,13 @@ export class ShotControl {
 
   render() {
     const percent = Math.round(this.value * 100);
-    this.element.style.setProperty('--shot-power', this.value);
+    this.element.style.setProperty('--shot-power', this.value / MAX_SHOT_POWER);
+    this.element.setAttribute('aria-valuemax', String(MAX_SHOT_POWER * 100));
     this.element.setAttribute('aria-valuenow', String(percent));
     this.element.setAttribute('aria-valuetext', `${percent} percent. ${this.drag?.cancelled ? 'Release to cancel.' : this.drag && this.value > 0 ? 'Release to shoot.' : 'Pull down to charge.'}`);
     this.element.setAttribute('aria-disabled', String(this.disabled));
     this.element.classList.toggle('charging', this.charging);
+    this.element.classList.toggle('boosted', this.value > 1);
     this.element.classList.toggle('cancelled', !!this.drag?.cancelled);
     this.output.innerHTML = `${percent}<span>%</span>`;
     this.hint.textContent = this.disabled ? this.disabledLabel : this.drag?.cancelled ? 'CANCEL' : this.drag && this.value > 0 ? 'RELEASE' : this.value > 0 ? 'SPACE ↵' : 'PULL ↓';
@@ -67,7 +71,7 @@ export class ShotControl {
     event.preventDefault();
     this.drag.cancelled = Math.abs(event.clientX - this.drag.x) > 80;
     const distance = Math.max(0, event.clientY - this.drag.y);
-    this.setPower(distance < 8 ? 0 : distance / this.drag.travel);
+    this.setPower(distance < 8 ? 0 : distance / this.drag.travel * MAX_SHOT_POWER);
   }
 
   endDrag() {
@@ -103,7 +107,7 @@ export class ShotControl {
         this.onShoot(power);
       }
     } else if (event.key === 'Home') this.setPower(0);
-    else if (event.key === 'End') this.setPower(1);
+    else if (event.key === 'End') this.setPower(MAX_SHOT_POWER);
     else this.setPower(this.value + (['ArrowUp', 'ArrowRight'].includes(event.key) ? 0.05 : -0.05));
   }
 }

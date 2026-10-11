@@ -1,6 +1,13 @@
-.match-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
-.match-actions > span { flex: 1; min-width: 130px; color: #a8ba9d; font-size: 9px; line-height: 1.5; }
-.match-actions button { border: 1px solid #526247; border-radius: 6px; padding: 7px 9px; color: #cfdbbf; background: #23301f; font-size: 9px; }
+/* Fixed tracks keep the canvas still when placement/call buttons change. */
+.match-actions { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 27px 32px; align-items: center; gap: 4px; margin-top: 4px; }
+.match-actions > span { min-width: 0; max-height: 27px; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #a8ba9d; font-size: 9px; line-height: 13.5px; }
+.match-buttons { display: grid; grid-template-columns: minmax(0, 1fr) 56px 112px; grid-template-rows: 32px; gap: 5px; min-width: 0; height: 32px; }
+.match-actions button { min-width: 0; height: 32px; white-space: nowrap; border: 1px solid #526247; border-radius: 6px; padding: 7px 9px; color: #cfdbbf; background: #23301f; font-size: 9px; }
+#match-call { grid-column: 1; grid-row: 1; }
+#match-safety { grid-column: 2; grid-row: 1; }
+.match-placement-slot { grid-column: 3; grid-row: 1; display: grid; grid-template: 32px / minmax(0, 1fr); min-width: 0; }
+.match-placement-slot button { grid-area: 1 / 1; width: 100%; }
+#turn-status { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .match-actions button[aria-pressed="true"], #match-confirm { background: var(--accent); color: #253020; border-color: var(--accent); }
 .match-actions button:disabled { opacity: .35; }
 .match-actions [hidden], .match-settings[hidden], .game[data-mode="playground"] .match-actions, .game[data-mode="playground"] .pocket-labels { display: none; }
@@ -27,6 +34,9 @@
 .breaker-select select { background: #17271b; color: #d4ddc9; border: 1px solid #647252; padding: 9px 16px; border-radius: 6px; }
 .break-options { display: flex; flex-direction: column; gap: 10px; }
 .rules-note a { color: var(--accent); }
+@media (min-width: 600px) {
+  .match-actions { grid-template-columns: minmax(0, 1fr) 290px; grid-template-rows: 32px; gap: 8px; }
+}
 @media (orientation: landscape) and (min-width: 600px) {
   .game[data-mode="match"] { grid-template-rows: auto minmax(0, 1fr); }
   .game[data-mode="match"] .table-info { position: static; width: 100%; height: auto; overflow: visible; clip-path: none; grid-row: 1; padding: 0 5px 4px; }

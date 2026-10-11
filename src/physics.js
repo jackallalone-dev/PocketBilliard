@@ -45,7 +45,19 @@ export class PoolPhysics {
     this.onEvent({ type: 'pocket', id: ball.id, pocket, pocketIndex, step: this.stepNumber });
   }
 
-  step(dt) {
+  step(dt, beforeStep) {
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    const maxSpeed = this.balls.reduce((speed, ball) => ball.pocketed ? speed : Math.max(speed, Math.hypot(ball.vx, ball.vz)), 0);
+    // Keep travel below a ball radius even for boosted shots. This prevents
+    // skipping ball contacts or crossing a cushion nose between solver steps.
+    const steps = Math.max(1, Math.ceil(maxSpeed * dt / (TABLE.radius * 0.75)));
+    for (let i = 0; i < steps; i++) {
+      beforeStep?.(this.balls);
+      this.integrateStep(dt / steps);
+    }
+  }
+
+  integrateStep(dt) {
     this.stepNumber++;
     const r = TABLE.radius;
     for (const b of this.balls) {

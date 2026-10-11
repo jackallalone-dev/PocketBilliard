@@ -3,6 +3,10 @@
 .power-label { margin-top: 8px; }
 .shot-power output { margin-top: 3px; }
 .power-track { inset: 44px 6px 22px; }
+.power-track::after { content: '100'; position: absolute; top: calc(50% - 7px); left: -2px; font: 5px 'Space Grotesk', sans-serif; color: #acb69d; pointer-events: none; }
+.shot-power.boosted { border-color: #e5a168; }
+.shot-power.boosted output { color: #ffc48c; }
+.shot-power.boosted:not(.cancelled) .power-thumb, .shot-power.boosted:not(.cancelled) .power-fill { background: #ed9f62; }
 .power-hint { bottom: 8px; }
 .aim-wheel { flex: 0 1 112px; min-height: 52px; }
 .wheel-marker { top: calc(50% + 1px); }
@@ -10,7 +14,7 @@
 .spin-button:hover { border-color: var(--accent); }
 .spin-button:disabled { opacity: .4; }
 .mini-cue-ball { position: relative; display: block; width: 25px; height: 25px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffef5, #e6e3d4 60%, #a5ae9e); box-shadow: 0 2px 4px #0005; }
-.mini-cue-ball > span { position: absolute; left: calc(50% + var(--spin-x) * 32.5%); top: calc(50% - var(--spin-y) * 32.5%); width: 5px; height: 5px; border-radius: 50%; background: #bf493f; transform: translate(-50%, -50%); }
+.mini-cue-ball > span { position: absolute; left: calc(50% + var(--spin-x) * 32.5%); top: calc(50% - var(--spin-y) * 32.5%); width: 7px; height: 7px; border-radius: 50%; background: #c52f27; transform: translate(-50%, -50%); }
 .spin-modal { width: min(430px, calc(100% - 32px)); }
 .spin-modal h1 { margin-top: 14px; font-size: 30px; }
 .spin-modal .modal-intro { font-size: 12px; margin-bottom: 16px; }

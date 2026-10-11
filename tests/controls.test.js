@@ -21,12 +21,12 @@ test('dragging charges without shooting; release fires exactly once at the selec
   const { element, control, shots } = setup();
   element.send('pointerdown');
   element.send('pointermove', { clientY: 190 });
-  assert.equal(control.value, 0.5);
-  assert.equal(element.attributes.get('aria-valuenow'), '50');
+  assert.equal(control.value, 1);
+  assert.equal(element.attributes.get('aria-valuenow'), '100');
   assert.equal(shots.length, 0);
   element.send('pointerup', { clientY: 190 });
   element.send('pointerup', { clientY: 190 });
-  assert.deepEqual(shots, [0.5]);
+  assert.deepEqual(shots, [1]);
   assert.equal(control.value, 0);
   assert.equal(control.charging, false);
   assert.equal(element.captures.size, 0);
@@ -50,7 +50,7 @@ test('sideways release cancels; moving back into the gesture rearms the shot', (
   element.send('pointerdown');
   element.send('pointermove', { clientX: 200, clientY: 190 });
   element.send('pointerup', { clientX: 100, clientY: 190 });
-  assert.deepEqual(shots, [0.5]);
+  assert.deepEqual(shots, [1]);
 });
 
 test('browser cancellation, capture loss, modal opening, or a disabled control cannot fire', () => {
@@ -79,7 +79,7 @@ test('secondary touches cannot take over a shot and drag power is clamped', () =
   assert.equal(control.value, 0);
   assert.equal(shots.length, 0);
   element.send('pointerup', { clientY: 1000 });
-  assert.deepEqual(shots, [1]);
+  assert.deepEqual(shots, [2]);
 });
 
 test('keyboard power adjustment, firing, and escape cancellation work without pointer input', () => {
@@ -90,6 +90,8 @@ test('keyboard power adjustment, firing, and escape cancellation work without po
   element.send('keydown', { key: 'Enter', repeat: false });
   assert.deepEqual(shots, [0.1]);
   element.send('keydown', { key: 'End' });
+  assert.equal(control.value, 2);
+  assert.equal(element.attributes.get('aria-valuemax'), '200');
   element.send('keydown', { key: 'Escape' });
   element.send('keydown', { key: ' ', repeat: false });
   assert.equal(shots.length, 1);

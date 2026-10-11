@@ -31,31 +31,34 @@ function feltTexture() {
 
 function ballTexture(id) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256; canvas.height = 128;
+  canvas.width = 512; canvas.height = 256;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = id > 8 ? '#f8f4e7' : BALL_COLORS[id];
-  ctx.fillRect(0, 0, 256, 128);
+  ctx.fillRect(0, 0, 512, 256);
   if (id === 0) {
-    ctx.fillStyle = '#b34b40';
-    for (const [x, y] of [[32, 64], [96, 64], [160, 64], [224, 64], [64, 24], [192, 104]]) {
-      ctx.beginPath();ctx.arc(x, y, 2.5, 0, Math.PI * 2);ctx.fill();
+    ctx.fillStyle = '#cf2925';ctx.strokeStyle = '#952c27';ctx.lineWidth = 1.5;
+    // Larger measles-style spots, including a face-up spot in the initial pose.
+    // The duplicate at the UV seam keeps that spot continuous as the ball spins.
+    for (const [x, y] of [[128, 128], [384, 128], [0, 128], [512, 128], [256, 128], [128, 32], [384, 224]]) {
+      ctx.beginPath();ctx.arc(x, y, 12, 0, Math.PI * 2);ctx.fill();ctx.stroke();
     }
   }
   if (id > 8) {
     ctx.fillStyle = BALL_COLORS[id];
-    ctx.fillRect(0, 37, 256, 54);
+    ctx.fillRect(0, 70, 512, 116);
   }
   if (id) {
-    for (const x of [64, 192]) {
-      ctx.beginPath();ctx.ellipse(x, 64, 16, 18, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff9e9';ctx.fill();
-      ctx.fillStyle = '#20251f';ctx.font = 'bold 23px Arial';ctx.textAlign = 'center';ctx.textBaseline = 'middle';
-      ctx.fillText(String(id), x, 65);
+    for (const x of [128, 384]) {
+      ctx.beginPath();ctx.ellipse(x, 128, 48, 48, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#fffef4';ctx.fill();
+      ctx.strokeStyle = '#d7d4c3';ctx.lineWidth = 1.5;ctx.stroke();
+      ctx.fillStyle = '#080c0b';ctx.font = `900 ${id < 10 ? 68 : 58}px Arial`;ctx.textAlign = 'center';ctx.textBaseline = 'middle';
+      ctx.fillText(String(id), x, 131);
     }
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   return texture;
 }
 
@@ -263,7 +266,10 @@ export class TableView {
     }
     this.ballMeshes.clear();this.falling.clear();
     for (const ball of balls) {
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(TABLE.radius, 24, 18), new THREE.MeshStandardMaterial({ map: ballTexture(ball.id), roughness: 0.23, metalness: 0.02 }));
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(TABLE.radius, 32, 24), new THREE.MeshPhysicalMaterial({
+        map: ballTexture(ball.id), roughness: 0.28, metalness: 0,
+        clearcoat: 0.65, clearcoatRoughness: 0.2,
+      }));
       mesh.position.set(ball.x, TABLE.radius + 0.028, ball.z);mesh.rotation.x = -Math.PI / 2;mesh.castShadow = true;
       this.ballMeshes.set(ball.id, mesh);this.scene.add(mesh);
     }

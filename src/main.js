@@ -252,6 +252,7 @@ function updateMatchUI() {
   else if (game.ballInHand === 'kitchen') instruction = 'First hit must be outside the kitchen. Call your shot.';
   else instruction = shotCall.safety ? 'Safety: your turn ends after this shot.' : game.callReady(shotCall) ? callLabel : 'Call a ball and pocket, or declare Safety.';
   $('match-instruction').textContent = instruction;
+  $('match-instruction').title = instruction;
   $('match-settings').hidden = !active || menuOpen;
   $('match-concede').disabled = !active || inShot || game.winner !== null || !!game.pendingBreak;
   $('match-stalemate').disabled = !active || inShot || game.winner !== null || !game.stalemateEligible;
@@ -706,8 +707,7 @@ try {
     if (inShot && !document.querySelector('dialog[open]')) {
       accumulator += dt;
       while (accumulator >= fixedStep) {
-        if (mode === 'match') shotTracker?.sample(physics.balls);
-        physics.step(fixedStep);accumulator -= fixedStep;
+        physics.step(fixedStep, mode === 'match' ? (balls) => shotTracker?.sample(balls) : undefined);accumulator -= fixedStep;
       }
       if (!physics.moving) {
         settleTime += dt;

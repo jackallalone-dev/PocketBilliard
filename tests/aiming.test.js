@@ -32,14 +32,30 @@ function controls() {
   return { state, table, wheel, power, tableElement, wheelElement, powerElement };
 }
 
-test('tapping and dragging on the cloth aims at the touched point without shooting', () => {
+test('tapping aims on release while swiping rotates the existing aim without a touch-down snap', () => {
   const { tableElement, state } = controls();
   tableElement.send('pointerdown', { clientX: 200 });
+  assert.equal(state.angle, 0, 'touching must not snap the aim');
+  tableElement.send('pointerup', { clientX: 200 });
   assert.equal(state.angle, Math.PI / 2);
+  tableElement.send('pointerdown', { clientX: 200 });
   tableElement.send('pointermove', { clientX: 100, clientY: 0 });
   assert.equal(state.angle, 0);
   tableElement.send('pointerup', { clientX: 100, clientY: 0 });
   assert.equal(state.shots.length, 0);
+});
+
+test('a swipe starting away from the aiming direction preserves the angle and never becomes a tap', () => {
+  const { tableElement, state } = controls();
+  state.angle = 0.7;
+  tableElement.send('pointerdown', { clientX: 200, clientY: 100 });
+  tableElement.send('pointermove', { clientX: 202, clientY: 100 });
+  assert.equal(state.angle, 0.7);
+  tableElement.send('pointermove', { clientX: 200, clientY: 120 });
+  const expected = 0.7 + Math.atan2(1, -0.2) - Math.PI / 2;
+  assert.ok(Math.abs(state.angle - expected) < 1e-8);
+  tableElement.send('pointerup', { clientX: 200, clientY: 120 });
+  assert.ok(Math.abs(state.angle - expected) < 1e-8, 'releasing a swipe must not aim at the release point');
 });
 
 test('grabbing the stick preserves the current aim and rotates it by the drag, not toward the butt', () => {
@@ -87,21 +103,21 @@ test('table drag, aiming wheel, and shooting lock out conflicting gestures', () 
   wheelElement.send('wheel', { deltaY: 20 });
   assert.equal(table.active, false);assert.equal(wheel.active, false);assert.equal(state.angle, lockedAngle);
   powerElement.send('pointerup', { clientY: 190 });
-  assert.deepEqual(state.shots, [{ angle: lockedAngle, power: 0.5 }]);
+  assert.deepEqual(state.shots, [{ angle: lockedAngle, power: 1 }]);
 });
 
 test('cancelled or interrupted aiming stops tracking and secondary fingers cannot take over', () => {
   const { tableElement, wheelElement, state, table, wheel } = controls();
   tableElement.send('pointerdown', { clientX: 200 });
   tableElement.send('pointermove', { pointerId: 2, clientX: 100, clientY: 0 });
-  assert.equal(state.angle, Math.PI / 2);
+  assert.equal(state.angle, 0);
   tableElement.send('pointercancel');
   assert.equal(table.active, false);
   wheelElement.send('pointerdown');
   state.allowed = false;
   wheelElement.send('pointermove', { clientY: 200 });
   assert.equal(wheel.active, false);
-  assert.equal(state.angle, Math.PI / 2);
+  assert.equal(state.angle, 0);
 });
 
 function viewAt(width, height, left = 0, top = 0) {

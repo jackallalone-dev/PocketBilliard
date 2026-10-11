@@ -57,7 +57,18 @@
 
         <div class="table-info">
           <div class="turn-status"><span class="status-dot"></span><span id="turn-status" aria-live="polite"><strong>Player 1</strong>, break the ice.</span><span class="shot-count" id="shot-count">SHOT 01</span></div>
-          <div class="match-actions" aria-label="Match shot declaration"><span id="match-instruction" aria-live="polite">Place the cue behind the head string.</span><button id="match-call">Call shot</button><button id="match-safety" aria-pressed="false">Safety</button><button id="match-place" hidden>Reposition cue</button><button id="match-confirm" hidden>Position ready ✓</button><button id="match-break-choice" hidden>Choose breaker</button></div>
+          <div class="match-actions" aria-label="Match shot declaration">
+            <span id="match-instruction" aria-live="polite">Place the cue behind the head string.</span>
+            <div class="match-buttons">
+              <button id="match-call">Call shot</button>
+              <button id="match-safety" aria-pressed="false">Safety</button>
+              <div class="match-placement-slot">
+                <button id="match-place" hidden>Reposition cue</button>
+                <button id="match-confirm" hidden>Position ready ✓</button>
+                <button id="match-break-choice" hidden>Choose breaker</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="table-area" id="table-area">
           <div class="table-meta"><span><span class="live-dot"></span> FRIENDLY 8-BALL</span><span>PASS & PLAY <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h12m-4-4 4 4-4 4M17 17H5m4 4-4-4 4-4"/></svg></span></div>
@@ -71,7 +82,7 @@
           <section id="pocketed-panel" class="pocketed-panel" aria-label="Pocketed balls"><span class="pocketed-label" aria-hidden="true">DOWN</span><ol id="pocketed-balls" class="pocketed-list" tabindex="0" aria-label="Balls in pocketing order. Scroll to see all pocketed balls."></ol><span id="pocketed-empty" aria-label="No balls pocketed">—</span><span id="pocket-announcement" class="sr-only" aria-live="polite"></span></section>
           <div id="control-dock" class="control-dock" role="group" aria-label="Aiming and shooting controls">
             <button id="spin-button" class="spin-button" aria-label="Cue-ball spin: center ball" title="Choose where the cue hits the white ball"><span class="mini-cue-ball" aria-hidden="true"><span></span></span><span>SPIN</span></button>
-            <div id="shot-power" class="shot-power" role="slider" tabindex="0" aria-label="Shot power. Drag down and release to shoot." aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0 percent. Pull down to charge." aria-describedby="power-instructions" aria-disabled="true">
+            <div id="shot-power" class="shot-power" role="slider" tabindex="0" aria-label="Shot power, up to 200 percent. Drag down and release to shoot." aria-orientation="vertical" aria-valuemin="0" aria-valuemax="200" aria-valuenow="0" aria-valuetext="0 percent. Pull down to charge." aria-describedby="power-instructions" aria-disabled="true">
               <span class="power-label">POWER</span>
               <output id="power-value" aria-hidden="true">0<span>%</span></output>
               <div class="power-track" aria-hidden="true"><div class="power-fill"></div><div class="power-thumb"><span></span><span></span></div></div>
@@ -82,7 +93,7 @@
             </div>
           </div>
           <span id="aim-instructions" class="sr-only">Drag the wheel up or down to adjust your aim precisely. Arrow keys also adjust the angle. This control does not shoot.</span>
-          <span id="power-instructions" class="sr-only">Drag down to increase power and release to shoot. Return to the starting point or move sideways to cancel. With a keyboard, use arrow keys to set power and Enter or Space to shoot.</span>
+          <span id="power-instructions" class="sr-only">Drag down to increase power up to 200 percent and release to shoot. Halfway is 100 percent; the full pull is 200 percent. Return to the starting point or move sideways to cancel. With a keyboard, use arrow keys to set power, End for maximum, and Enter or Space to shoot.</span>
           <div class="loading-state" id="loading-state"><span class="loading-ball">8</span><p>Setting the table…</p></div>
           <div class="turn-toast" id="turn-toast" role="status" aria-live="polite"></div>
           <div class="table-caption"><span class="aim-icon">↗</span><span id="table-hint">Tap the table or drag to aim</span></div>
@@ -96,7 +107,7 @@
       <button class="modal-close icon-button" data-close="help-dialog" aria-label="Close instructions">×</button>
       <span class="eyebrow">WELCOME TO THE CLUB</span><h1>A little friendly<br />competition.</h1><p class="modal-intro">Grab a friend. Share a screen. Make your shot.</p>
       <div class="instruction"><span>01</span><div><h3>Find your angle</h3><p>Tap the cloth to aim at a point, or grab and drag the stick to rotate it around the cue ball. Roll the FINE AIM wheel up or down for tiny adjustments. The dotted line shows your ball’s path.</p></div></div>
-      <div class="instruction"><span>02</span><div><h3>Pull, then release</h3><p>Pull down on the side power control. A longer pull means more power. Release to shoot. Slide back up or move sideways to cancel. Choose the left or right side in Settings.</p></div></div>
+      <div class="instruction"><span>02</span><div><h3>Pull, then release</h3><p>Pull down on the side power control: halfway is 100%, and a full pull is 200%. Release to shoot. Slide back up or move sideways to cancel. Choose the left or right side in Settings.</p></div></div>
       <div class="instruction"><span>03</span><div><h3>Call it, then make it</h3><p>After the break, choose your ball and pocket with Call shot, or declare Safety. Groups stay open until a called ball is legally pocketed. Clear your group, then call and pocket the 8 on a later shot.</p></div></div>
       <div class="rules-note"><strong>UPA amateur rules:</strong> a legal break pockets a numbered ball or sends four distinct object balls to rails. A legal 8-ball break wins; an 8-ball break with a foul loses. Fouls give the opponent ball in hand—behind the head string after a break foul, anywhere otherwise. Hit a legal ball first, then reach a rail or pocket. Scratching while shooting at the 8 only loses if the 8 also falls.</div>
       <div class="rules-note">Use the move handle to place the cue, then confirm its position. After a break foul, the first object ball hit must be outside the kitchen. Close cue/object-ball shots require a 45° approach under UPA’s double-hit rule. Ordinary fouls do not respot object balls. Safety ends your turn even if balls drop.</div>
