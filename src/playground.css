@@ -53,5 +53,5 @@
   .game[data-mode="playground"] .table-area { grid-row: 2; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  .menu-content { width: min(100%, 740px); }.menu-brand { margin-bottom: 14px; font-size: 20px; }.main-menu h1 { font-size: 34px; letter-spacing: -1px; margin: 8px 0; }.main-menu h1 br { display: none; }.menu-intro { margin-bottom: 12px; max-width: none; }.menu-modes { grid-template-columns: 1fr 1fr; }.menu-mode { padding: 14px; grid-template-columns: 38px 1fr 18px; }.menu-links { margin-top: 8px; }.menu-status { margin: 0; }
+  .menu-content { width: min(100%, 900px); }.menu-brand { margin-bottom: 14px; font-size: 20px; }.main-menu h1 { font-size: 34px; letter-spacing: -1px; margin: 8px 0; }.main-menu h1 br { display: none; }.menu-intro { margin-bottom: 12px; max-width: none; }.menu-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }.menu-mode { padding: 12px; grid-template-columns: 1fr 18px; }.menu-mode-icon { grid-column: 1; grid-row: 1; }.menu-mode strong { grid-column: 1; grid-row: 2; font-size: 13px; }.menu-mode > span:not(.menu-mode-icon):not(.menu-arrow) { grid-column: 1; grid-row: 3; }.menu-arrow { grid-column: 2; grid-row: 1 / 4; }.menu-links { margin-top: 8px; }.menu-status { margin: 0; }
 }

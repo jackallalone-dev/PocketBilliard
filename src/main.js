@@ -14,12 +14,16 @@ import { PocketHistory } from './pocket-history.js';
 import { Playground } from './playground.js';
 import { BallPlacementControl } from './ball-placement.js';
 import { SpinControl } from './spin-control.js';
-import { clampSpin, spinDescription } from './spin.js';
+import { clampSpin, spinDescription, clampElevation } from './spin.js';
+import { minimumCueElevation, cueObstruction } from './cue-elevation.js';
+import { shotEffects } from './shot-effects.js';
 import { ShotTracker, POCKET_NAMES } from './match-rules.js';
 import { CuePlacement } from './cue-placement.js';
+import { NineBallGame, spotNineBall } from './nine-ball.js';
 
 const $ = (id) => document.getElementById(id);
-const game = new EightBallGame();
+const matches = { match: new EightBallGame(), nine: new NineBallGame() };
+let game = matches.match;
 const audio = new GameAudio();
 const pocketHistory = new PocketHistory();
 const playground = new Playground();
@@ -43,15 +47,17 @@ let aimWheel;
 let ballPlacement;
 let spinControl;
 let selectedSpin = { x: 0, y: 0 };
+let selectedElevation = 0;
 let aimAids = loadAimAids();
 let shotTracker = null;
 let shotCall = { ball: null, pocket: null, safety: false };
 let callDraft = { ...shotCall };
 let lastRuleMessage = '';
+let warningPlayer = null;
 let placementOffset = { x: 50, y: -58 };
 
 const physics = new PoolPhysics((event) => {
-  if (mode === 'match' && inShot) shotTracker?.record(event);
+  if (isMatch() && inShot) shotTracker?.record(event);
   if (['collision', 'rail', 'pocket'].includes(event.type)) audio.play(event.type, event.speed || 1);
   if (event.type === 'pocket') {
     shotBalls.push(event.id);
@@ -66,14 +72,16 @@ const physics = new PoolPhysics((event) => {
 const cuePlacement = new CuePlacement(physics, game);
 
 function canInteract() { return !!view && !menuOpen && !contextLost && !document.hidden && !document.querySelector('dialog[open]'); }
+function isMatch() { return mode === 'match' || mode === 'nine'; }
 function canEdit() { return canInteract() && mode === 'playground' && playground.editing && !inShot; }
-function canPlaceCue() { return canInteract() && mode === 'match' && !inShot && game.winner === null && !game.pendingBreak && !!game.ballInHand && !game.placementConfirmed; }
+function canPlaceCue() { return canInteract() && isMatch() && !inShot && game.winner === null && !game.pendingBreak && !game.pendingPush && !!game.ballInHand && !game.placementConfirmed; }
 function canArrange() { return canEdit() || canPlaceCue(); }
 function placementModel() { return mode === 'playground' ? playground : cuePlacement; }
-function showAiming() { return !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null && !game.pendingBreak && (!game.ballInHand || game.placementConfirmed)); }
+function showAiming() { return !inShot && !physics.cue.pocketed && (mode === 'playground' ? !playground.editing : game.winner === null && !game.pendingBreak && !game.pendingPush && (!game.ballInHand || game.placementConfirmed)); }
 function canAimNow() { return canInteract() && showAiming(); }
+function shotElevation() { return Math.max(selectedElevation, minimumCueElevation(physics.balls, angle, selectedSpin)); }
 function canTakeShot() {
-  return canAimNow() && (mode === 'playground' || game.callReady(shotCall));
+  return canAimNow() && (mode === 'playground' || game.callReady(shotCall)) && cueObstruction(physics.balls, angle, selectedSpin, shotElevation()) === null;
 }
 
 const shotControl = new ShotControl($('shot-power'), {
@@ -96,7 +104,7 @@ tableAiming = new TableAimControl(container, {
   setAngle: setAimAngle,
   pointFromScreen: (x, y) => view.pointFromScreen(x, y),
   hitCue: (x, y) => {
-    view.updateAim(physics.balls, angle, shotPower, true, selectedSpin, aimAids);
+    view.updateAim(physics.balls, angle, shotPower, true, selectedSpin, aimAids, shotElevation());
     return view.hitCue(x, y, physics.cue);
   },
 });
@@ -112,7 +120,7 @@ ballPlacement = new BallPlacementControl(container, $('ball-drag-handle'), {
   pickBall: (x, y) => {
     let nearest = null, distance = Infinity;
     for (const ball of physics.balls) {
-      if (ball.pocketed || (mode === 'match' && ball.id !== 0)) continue;
+      if (ball.pocketed || (isMatch() && ball.id !== 0)) continue;
       const screen = view.ballToScreen(ball);
       const d = Math.hypot(x - screen.x, y - screen.y);
       if (d < Math.max(18, screen.radius + 8) && d < distance) { nearest = ball.id;distance = d; }
@@ -129,9 +137,12 @@ ballPlacement = new BallPlacementControl(container, $('ball-drag-handle'), {
   },
 });
 
-function canChangeSpin() {
-  return !!view && !menuOpen && !contextLost && !inShot && $('spin-dialog').hasAttribute('open') && (mode === 'playground' ? !playground.editing : game.winner === null);
+function canChangeStroke(dialogId) {
+  return !!view && !menuOpen && !contextLost && !inShot && $(dialogId).hasAttribute('open') && (mode === 'playground' ? !playground.editing : game.winner === null);
 }
+
+function canChangeSpin() { return canChangeStroke('spin-dialog'); }
+function canChangeElevation() { return canChangeStroke('elevation-dialog'); }
 
 function setSelectedSpin(value) {
   selectedSpin = clampSpin(value);
@@ -139,9 +150,33 @@ function setSelectedSpin(value) {
   const button = $('spin-button');
   button.style.setProperty('--spin-x', selectedSpin.x);
   button.style.setProperty('--spin-y', selectedSpin.y);
-  button.setAttribute('aria-label', `Cue-ball spin: ${spinDescription(selectedSpin)}`);
-  button.title = spinDescription(selectedSpin);
+  updateElevationUI();
   aimDirty = true;
+}
+
+function updateElevationUI() {
+  const minimum = minimumCueElevation(physics.balls, angle, selectedSpin);
+  const elevation = Math.max(selectedElevation, minimum);
+  $('cue-elevation').min = String(minimum);
+  $('cue-elevation').value = String(elevation);
+  $('cue-elevation').setAttribute('aria-valuetext', `${elevation} degrees above the table. Minimum ball clearance ${minimum} degrees.`);
+  $('elevation-value').textContent = `${elevation}°`;
+  $('elevation-label').textContent = `${elevation}°`;
+  $('elevation-cue').setAttribute('transform', `rotate(${elevation} 188 128)`);
+  const effects = shotEffects(selectedSpin, elevation, shotPower || 0.65);
+  $('shot-effect').textContent = `${effects.label} · ${Math.round((shotPower || 0.65) * 100)}% preview`;
+  $('shot-effect').dataset.curve = String(effects.curve);
+  const blocked = cueObstruction(physics.balls, angle, selectedSpin, elevation);
+  $('elevation-clearance').textContent = blocked !== null ? `Ball ${blocked} blocks the cue even at this height. Change aim or contact point.` : minimum > 0 ? `Ball clearance needs at least ${minimum}°. Raise further for a steeper jump.` : 'Cue is clear. Raise the butt to strike down and jump; 0° is flat.';
+  for (const button of document.querySelectorAll('[data-elevation]')) button.setAttribute('aria-pressed', String(Number(button.dataset.elevation) === selectedElevation));
+  const spinLabel = `Cue-ball spin: ${spinDescription(selectedSpin)}. Adjust contact point.`;
+  $('spin-button').setAttribute('aria-label', spinLabel);$('spin-button').title = spinLabel;
+  const angleLabel = `Cue-stick angle: ${elevation} degrees. Adjust vertical cue angle.`;
+  $('elevation-button').setAttribute('aria-label', angleLabel);$('elevation-button').title = angleLabel;
+}
+
+function setSelectedElevation(value) {
+  selectedElevation = clampElevation(value);aimDirty = true;updateElevationUI();
 }
 
 spinControl = new SpinControl($('spin-pad'), { canChange: canChangeSpin, onChange: setSelectedSpin, output: $('spin-value') });
@@ -228,16 +263,23 @@ function updatePocketLabels() {
 }
 
 function updateMatchUI() {
-  const active = mode === 'match';
+  const active = isMatch(), nine = mode === 'nine';
   const placing = canPlaceCue();
   const available = active && canAimNow();
-  const callLabel = shotCall.safety ? 'Safety declared' : game.callReady(shotCall) && !game.isBreak ? `Ball ${shotCall.ball} → P${shotCall.pocket + 1}` : 'Call shot';
+  const callLabel = nine ? shotCall.push ? 'Push-out declared' : `Hit ${game.lowestBall ?? '—'} first` : shotCall.safety ? 'Safety declared' : game.callReady(shotCall) && !game.isBreak ? `Ball ${shotCall.ball} → P${shotCall.pocket + 1}` : 'Call shot';
   $('match-call').textContent = callLabel;
-  $('match-call').hidden = game.isBreak || !!game.pendingBreak || game.winner !== null;
+  $('match-call').hidden = nine || game.isBreak || !!game.pendingBreak || game.winner !== null;
   $('match-call').disabled = !available;
-  $('match-safety').hidden = game.isBreak || !!game.pendingBreak || game.winner !== null;
+  $('match-safety').hidden = nine || game.isBreak || !!game.pendingBreak || game.winner !== null;
   $('match-safety').disabled = !available;
   $('match-safety').setAttribute('aria-pressed', String(shotCall.safety));
+  $('nine-target').hidden = !nine;
+  $('nine-target').textContent = callLabel;
+  $('nine-push').hidden = !nine || !game.pushAvailable || game.winner !== null || !!game.pendingPush;
+  $('nine-push').disabled = !available;
+  $('nine-push').setAttribute('aria-pressed', String(!!shotCall.push));
+  $('nine-push-choice').hidden = !nine || !game.pendingPush;
+  $('nine-push-choice').disabled = !canInteract();
   $('match-confirm').hidden = !placing;
   $('match-place').hidden = !active || !game.ballInHand || !game.placementConfirmed || inShot || game.winner !== null;
   $('match-place').disabled = !available;
@@ -246,16 +288,20 @@ function updateMatchUI() {
   let instruction;
   if (game.winner !== null) instruction = `Player ${game.winner + 1} wins.`;
   else if (game.pendingBreak) instruction = `Illegal break · Player ${game.currentPlayer + 1} chooses who breaks.`;
+  else if (game.pendingPush) instruction = `Push-out · Player ${game.pendingPush.chooser + 1} may take the shot or pass it back.`;
   else if (inShot) instruction = game.isBreak ? 'Break in motion.' : callLabel;
   else if (game.ballInHand && !game.placementConfirmed) instruction = `${lastRuleMessage ? `${lastRuleMessage}. ` : ''}Place cue ${game.ballInHand === 'kitchen' ? 'behind the head string' : 'anywhere clear'}, then confirm.`;
-  else if (game.isBreak) instruction = 'Break: pocket a ball or send 4 object balls to rails.';
+  else if (game.isBreak) instruction = nine ? 'Break: hit 1 first; pocket a ball or send 3 object balls to rails.' : 'Break: pocket a ball or send 4 object balls to rails.';
+  else if (nine) instruction = shotCall.push ? 'Push declared: no first-ball or rail requirement. Opponent chooses next.' : `Hit ${game.lowestBall} first. A legal 9 wins.${game.pushAvailable ? ' Push-out available for this shot.' : ''}${game.consecutiveFouls[game.currentPlayer] >= 2 ? game.warned[game.currentPlayer] ? ' Foul warning: next foul loses.' : ' Two or more fouls: no warning given yet.' : ''}`;
   else if (game.ballInHand === 'kitchen') instruction = 'First hit must be outside the kitchen. Call your shot.';
   else instruction = shotCall.safety ? 'Safety: your turn ends after this shot.' : game.callReady(shotCall) ? callLabel : 'Call a ball and pocket, or declare Safety.';
   $('match-instruction').textContent = instruction;
   $('match-instruction').title = instruction;
   $('match-settings').hidden = !active || menuOpen;
+  $('match-rules-label').textContent = nine ? 'UPA-based 9-ball · three-foul rule' : 'UPA-based amateur 8-ball';
   $('match-concede').disabled = !active || inShot || game.winner !== null || !!game.pendingBreak;
   $('match-stalemate').disabled = !active || inShot || game.winner !== null || !game.stalemateEligible;
+  $('match-stalemate').hidden = $('stalemate-note').hidden = nine;
   updatePocketLabels();
 }
 
@@ -269,23 +315,27 @@ function openMainMenu() {
   $('app').hidden = true;
   $('main-menu').hidden = false;
   $('menu-continue').hidden = !hasStarted;
-  $('menu-continue').firstChild.textContent = mode === 'playground' ? 'Continue playground ' : 'Continue your game ';
+  $('menu-continue').firstChild.textContent = mode === 'playground' ? 'Continue playground ' : mode === 'nine' ? 'Continue 9-ball ' : 'Continue 8-ball ';
   updateUI();
   (hasStarted ? $('menu-continue') : $('menu-match')).focus({ preventScroll: true });
 }
 
 function enterMode(nextMode) {
-  if (!view || contextLost) return;
+  if (!view || contextLost || !['match', 'nine', 'playground'].includes(nextMode)) return;
   cancelGestures();
   if (nextMode !== mode) {
-    sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], tracker: shotTracker, call: { ...shotCall }, step: physics.stepNumber, settleTime, angle, spin: { ...selectedSpin }, history: [...pocketHistory.ids] };
-    const session = sessions[nextMode] || { balls: playground.balls, inShot: false, shotBalls: [], tracker: null, call: {}, step: 0, settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [] };
+    sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], tracker: shotTracker, call: { ...shotCall }, step: physics.stepNumber, settleTime, angle, spin: { ...selectedSpin }, elevation: selectedElevation, history: [...pocketHistory.ids], ruleMessage: lastRuleMessage };
+    const session = sessions[nextMode] || { balls: nextMode === 'playground' ? playground.balls : new PoolPhysics(() => {}, nextMode === 'nine' ? 'nine' : 'eight').balls, inShot: false, shotBalls: [], tracker: null, call: {}, step: 0, settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [], ruleMessage: '' };
     mode = nextMode;
+    if (matches[mode]) game = matches[mode];
+    cuePlacement.game = game;
     physics.balls = session.balls;
     inShot = session.inShot;shotBalls = [...session.shotBalls];settleTime = session.settleTime;
     shotTracker = session.tracker;shotCall = { ...session.call };physics.stepNumber = session.step;
+    lastRuleMessage = session.ruleMessage;
     setAimAngle(session.angle);
     setSelectedSpin(session.spin);
+    setSelectedElevation(session.elevation ?? 0);
     pocketHistory.ids = [...session.history];renderPocketHistory();
     view.resetBalls(physics.balls);
   }
@@ -300,7 +350,7 @@ function setPlaygroundPhase(editing) {
   if (mode !== 'playground' || !canInteract() || inShot || playground.editing === editing) return;
   cancelGestures();
   if (editing) playground.editing = true;
-  else if (!playground.commit(angle, selectedSpin)) return;
+  else if (!playground.commit(angle, selectedSpin, selectedElevation)) return;
   clearPocketHistory();aimDirty = true;updateUI();
   toast(editing ? 'Arrange your shot. Drag a ball or its handle.' : 'Setup saved. Aim, pull, and release.');
 }
@@ -310,6 +360,7 @@ function restorePlayground() {
   cancelGestures();
   setAimAngle(playground.restore());
   setSelectedSpin(playground.setupSpin);
+  setSelectedElevation(playground.setupElevation);
   inShot = false;shotBalls = [];settleTime = 0;
   clearPocketHistory();view.resetBalls(physics.balls);updateUI();
   toast('Setup restored. Give it another try.');
@@ -366,14 +417,44 @@ function toast(message, duration = 2500) {
   toastTimer = setTimeout(() => $('turn-toast').classList.remove('visible'), duration);
 }
 
+function updateShotUI() {
+  const blocked = canAimNow() && cueObstruction(physics.balls, angle, selectedSpin, shotElevation()) !== null;
+  const disabled = !canTakeShot();
+  const label = inShot ? 'ROLLING' : mode === 'playground' && playground.editing ? 'EDIT' : isMatch() && game.winner !== null ? 'OVER' : blocked ? 'BLOCKED' : 'WAIT';
+  if (shotControl.disabled !== disabled || shotControl.disabledLabel !== label) shotControl.setDisabled(disabled, label);
+  const elevation = shotElevation();
+  const effects = shotEffects(selectedSpin, elevation, shotPower || 0.65);
+  $('table-hint').textContent = inShot ? 'Shot in motion' : mode === 'playground' && playground.editing ? 'Drag a ball or its move handle' : blocked ? 'Cue blocked · change aim or contact point' : elevation > 0 ? `${elevation}° · ${effects.label} · ${effects.curve ? 'violet' : 'amber'} guide` : 'Tap the table or drag to aim';
+}
+
 function updateUI(message) {
+  const nine = mode === 'nine';
+  $('game-ball-badge').textContent = nine ? '9' : '8';
   for (let player = 0; player < 2; player++) {
     const card = $(`player-${player}`);
     card.classList.toggle('active', game.currentPlayer === player && game.winner === null);
     card.querySelector('.turn-dot').setAttribute('aria-label', game.currentPlayer === player ? 'Current turn' : 'Waiting');
+    card.classList.toggle('foul-warning', nine && game.consecutiveFouls[player] >= 2);
+    if (nine) {
+      const low = game.lowestBall;
+      $(`group-${player}`).textContent = `HIT ${low ?? '—'} · F${game.consecutiveFouls[player]}${game.warned[player] ? '!' : ''}`;
+      $(`group-${player}`).title = `${game.consecutiveFouls[player]} consecutive fouls${game.warned[player] ? '; two-foul warning given' : ''}`;
+      const tray = $(`tray-${player}`);tray.replaceChildren();
+      for (let id = 1; id <= 9; id++) {
+        const ball = document.createElement('span');
+        ball.className = `tray-ball assigned${id === 9 ? ' stripe' : ''}${game.pocketed.has(id) ? ' pocketed' : ''}${id === low ? ' next-ball' : ''}`;
+        ball.style.setProperty('--ball-color', BALL_COLORS[id]);
+        const number = document.createElement('span');number.textContent = id;ball.appendChild(number);
+        ball.title = `Ball ${id}: ${game.pocketed.has(id) ? 'pocketed' : id === low ? 'hit this first' : 'on the table'}`;
+        tray.appendChild(ball);
+      }
+      tray.setAttribute('aria-label', `Remaining 9-ball targets. Hit ${low ?? 'none'} first. ${game.consecutiveFouls[player]} consecutive fouls.`);
+      continue;
+    }
     const group = game.groups[player];
     const remaining = game.remaining(player);
     $(`group-${player}`).textContent = group ? remaining.length ? `${group.toUpperCase()} · ${remaining.length} LEFT` : 'ON THE 8-BALL' : 'OPEN TABLE';
+    $(`group-${player}`).removeAttribute('title');
     const tray = $(`tray-${player}`);
     tray.replaceChildren();
     for (let i = 0; i < 7; i++) {
@@ -389,10 +470,9 @@ function updateUI(message) {
     }
     tray.setAttribute('aria-label', group ? `${remaining.length} ${group} remaining` : 'Groups not assigned yet');
   }
-  const disabled = !canTakeShot();
-  shotControl.setDisabled(disabled, inShot ? 'ROLLING' : mode === 'playground' && playground.editing ? 'EDIT' : mode === 'match' && game.winner !== null ? 'OVER' : 'WAIT');
+  updateShotUI();updateElevationUI();
   aimWheel.setDisabled(!canAimNow());
-  $('spin-button').disabled = !canAimNow();
+  $('spin-button').disabled = $('elevation-button').disabled = !canAimNow();
   if (!canAimNow()) tableAiming.cancel();
   if (!canArrange()) ballPlacement.cancel();
   ballPlacement.model = placementModel();
@@ -407,7 +487,6 @@ function updateUI(message) {
     strong.textContent = `Player ${(game.winner ?? game.currentPlayer) + 1}`;
     status.append(strong, document.createTextNode(message || (game.winner !== null ? ' wins. What a game.' : inShot ? ' is at the table.' : game.shotNumber === 1 ? ', break the ice.' : ', the table is yours.')));
   }
-  $('table-hint').textContent = inShot ? 'Let the good times roll' : mode === 'playground' && playground.editing ? 'Drag a ball or its move handle' : 'Tap the table or drag to aim';
   updatePlaygroundUI();updatePlacementOverlay();updateMatchUI();
 }
 
@@ -423,22 +502,32 @@ function finishShot() {
   shotTracker = null;
   shotCall = { ball: null, pocket: null, safety: false };
   setSelectedSpin({ x: 0, y: 0 });
+  setSelectedElevation(0);
+  if (result.spotNine) {
+    spotNineBall(physics.balls);
+    pocketHistory.ids = pocketHistory.ids.filter((id) => id !== 9);renderPocketHistory();
+    $('pocket-announcement').textContent = 'The 9-ball has been re-spotted.';
+  }
   if (result.illegalBreak) {
     showBreakChoice();
   } else if (result.winner !== undefined) {
     showWinner(result);
+  } else if (result.pushOut) {
+    lastRuleMessage = '';showPushChoice();
   } else {
     const foulMessages = {
       scratch: 'Scratch', 'ball-off-table': 'Ball off table', 'no-contact': 'No object-ball contact',
       'wrong-first-ball': 'Wrong first ball', 'no-rail': 'No rail or pocket after contact',
       'head-string': 'Cue not behind head string', 'kitchen-contact': 'First object ball was inside the kitchen',
       'close-double-hit': 'Close cue/object-ball hit requires a 45° approach',
+      'illegal-push': 'Push-out is no longer available',
     };
     lastRuleMessage = result.foul ? foulMessages[result.foul] : '';
     if (game.ballInHand) cuePlacement.prepare();
     const name = `Player ${game.currentPlayer + 1}`;
-    toast(result.foul ? `${lastRuleMessage} · ${name} has ball in hand` : result.keepTurn ? `${name} shoots again. Call the next shot.` : `${result.safety ? 'Safety' : 'Pass it over'} · ${name}’s turn`);
+    toast(result.foul ? `${lastRuleMessage}${result.spotNine ? ' · 9 re-spotted' : ''} · ${name} has ball in hand` : result.keepTurn ? mode === 'nine' ? `${name} shoots again. Hit ${game.lowestBall} first.` : `${name} shoots again. Call the next shot.` : `${result.safety ? 'Safety' : 'Pass it over'} · ${name}’s turn`);
     if (!result.keepTurn && navigator.vibrate) navigator.vibrate([20, 35, 20]);
+    if (mode === 'nine' && result.warningPlayer !== null && result.warningPlayer !== undefined) showFoulWarning(result.warningPlayer);
   }
   aimDirty = true;
   updateUI();
@@ -453,7 +542,11 @@ function showWinner(result) {
     'wrong-eight-pocket': 'The 8-ball did not go into its called pocket.',
     'early-eight': 'The 8-ball fell before the shooter was legally on the 8.',
     conceded: 'The other player conceded the game.',
+    'nine-pocketed': 'The lowest ball was contacted first and the 9 went down on a legal shot.',
+    'nine-on-break': 'The 1 was hit first and the 9 went down on a legal break.',
+    'three-fouls': 'Three consecutive fouls after the two-foul warning. The opponent wins.',
   };
+  $('winner-dialog').querySelector('.winner-ball').textContent = mode === 'nine' ? '9' : '8';
   $('winner-title').textContent = `Player ${result.winner + 1} wins.`;
   $('winner-detail').textContent = reasons[result.reason];
   openDialog('winner-dialog');
@@ -461,19 +554,33 @@ function showWinner(result) {
 
 function showBreakChoice() {
   if (!game.pendingBreak) return;
-  $('break-detail').textContent = `No numbered ball was pocketed and fewer than four object balls reached rails. Player ${game.pendingBreak.chooser + 1}, choose whether to break the new rack or ask Player ${game.pendingBreak.offender + 1} to break again.`;
+  $('break-detail').textContent = `No numbered ball was pocketed and fewer than ${mode === 'nine' ? 'three' : 'four'} object balls reached rails. Player ${game.pendingBreak.chooser + 1}, choose whether to break the new rack or ask Player ${game.pendingBreak.offender + 1} to break again.`;
   $('break-self').textContent = `Player ${game.pendingBreak.chooser + 1} breaks`;
   $('break-again').textContent = `Player ${game.pendingBreak.offender + 1} breaks again`;
   openDialog('break-dialog');
 }
 
+function showPushChoice() {
+  if (mode !== 'nine' || !game.pendingPush) return;
+  $('push-detail').textContent = `Player ${game.pendingPush.chooser + 1}, take the table as it lies or pass the shot back to Player ${game.pendingPush.pusher + 1}. The next shot must hit ${game.lowestBall} first.`;
+  openDialog('nine-push-dialog');
+}
+
+function showFoulWarning(player) {
+  warningPlayer = player;
+  $('warning-title').textContent = game.consecutiveFouls[player] === 2 ? 'Two fouls.' : 'Foul warning.';
+  $('nine-warning-detail').textContent = `Player ${player + 1} has committed ${game.consecutiveFouls[player]} consecutive fouls. Player ${2 - player}, warn them that another foul before a legal shot will lose the game, then select “Warning given.” Without this warning, a third foul is not an automatic loss.`;
+  openDialog('nine-warning-dialog');
+}
+
 function takeShot(power = shotPower) {
   if (!canTakeShot() || shotControl.charging || tableAiming.active || aimWheel.active || ballPlacement.active || power <= 0) return;
   audio.unlock();
-  if (!physics.shoot(angle, power, selectedSpin)) return;
-  shotTracker = mode === 'match' ? new ShotTracker(physics.balls, shotCall, angle) : null;
+  const elevation = shotElevation();
+  if (!physics.shoot(angle, power, selectedSpin, elevation)) return;
+  shotTracker = isMatch() ? new ShotTracker(physics.balls, shotCall, angle, elevation) : null;
   if (mode === 'playground') {
-    if (playground.attempts === 0) { playground.setupAngle = angle;playground.setupSpin = { ...selectedSpin }; }
+    if (playground.attempts === 0) { playground.setupAngle = angle;playground.setupSpin = { ...selectedSpin };playground.setupElevation = selectedElevation; }
     playground.attempts++;
   }
   shotControl.cancel();
@@ -487,10 +594,12 @@ function takeShot(power = shotPower) {
 function startMatchRack(breaker) {
   cancelGestures();
   for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
-  physics.reset();game.reset(breaker);view.resetBalls(physics.balls);
+  physics.reset(mode === 'nine' ? 'nine' : 'eight');game.reset(breaker);view.resetBalls(physics.balls);
+  warningPlayer = null;
   shotCall = { ball: null, pocket: null, safety: false };shotTracker = null;lastRuleMessage = '';
   setAimAngle(0);inShot = false;shotBalls = [];settleTime = 0;aimDirty = true;
   setSelectedSpin({ x: 0, y: 0 });
+  setSelectedElevation(0);
   pocketHistory.reset();renderPocketHistory();$('pocket-announcement').textContent = '';
   updateUI();toast(`Fresh rack. Player ${game.currentPlayer + 1}, place your cue ball.`);
 }
@@ -602,6 +711,7 @@ $('restart-button').addEventListener('click', () => mode === 'playground' ? rest
 $('menu-button').addEventListener('click', openMainMenu);
 $('menu-continue').addEventListener('click', () => enterMode(mode));
 $('menu-match').addEventListener('click', () => enterMode('match'));
+$('menu-nine').addEventListener('click', () => enterMode('nine'));
 $('menu-playground').addEventListener('click', () => enterMode('playground'));
 $('menu-settings').addEventListener('click', () => openDialog('settings-dialog'));
 $('menu-help').addEventListener('click', () => openDialog('help-dialog'));
@@ -616,12 +726,13 @@ $('pg-clear').addEventListener('click', () => {
   toast('Clear table. Choose balls to build your shot.');
 });
 $('spin-button').addEventListener('click', () => { if (canAimNow()) openDialog('spin-dialog'); });
+$('elevation-button').addEventListener('click', () => { if (canAimNow()) openDialog('elevation-dialog'); });
 $('match-confirm').addEventListener('click', () => {
   if (!canPlaceCue() || ballPlacement.active) return;
   if (cuePlacement.confirm()) { aimDirty = true;lastRuleMessage = '';updateUI(); }
 });
 $('match-place').addEventListener('click', () => {
-  if (mode !== 'match' || !canAimNow() || !game.ballInHand) return;
+  if (!isMatch() || !canAimNow() || !game.ballInHand) return;
   cancelGestures();game.placementConfirmed = false;cuePlacement.prepare();aimDirty = true;updateUI();
 });
 $('match-call').addEventListener('click', openCallDialog);
@@ -636,18 +747,18 @@ $('match-safety').addEventListener('click', () => {
 $('match-break-choice').addEventListener('click', showBreakChoice);
 $('break-dialog').addEventListener('cancel', (event) => event.preventDefault());
 for (const [id, choice] of [['break-self', 'chooser'], ['break-again', 'offender']]) $(id).addEventListener('click', () => {
-  if (mode !== 'match' || !game.pendingBreak) return;
+  if (!isMatch() || !game.pendingBreak) return;
   const player = game.pendingBreak[choice];
   if (game.chooseBreak(player)) startMatchRack(player);
 });
 $('match-concede').addEventListener('click', () => {
-  if (mode !== 'match' || inShot || game.winner !== null) return;
+  if (!isMatch() || inShot || game.winner !== null) return;
   $('settings-dialog').close();
   $('concede-detail').textContent = `Player ${game.currentPlayer + 1} will concede this game to Player ${2 - game.currentPlayer}.`;
   openDialog('concede-dialog');
 });
 $('confirm-concede').addEventListener('click', () => {
-  if (mode !== 'match' || inShot) return;
+  if (!isMatch() || inShot) return;
   const result = game.concede();$('concede-dialog').close();
   if (result) { showWinner(result);aimDirty = true; }
 });
@@ -662,6 +773,22 @@ for (const id of ['stalemate-p1', 'stalemate-p2']) $(id).addEventListener('chang
 $('confirm-stalemate').addEventListener('click', () => {
   if (mode === 'match' && game.stalemateEligible && $('stalemate-p1').checked && $('stalemate-p2').checked) startMatchRack(1 - game.breaker);
 });
+$('nine-push').addEventListener('click', () => {
+  if (mode !== 'nine' || !canAimNow() || !game.pushAvailable) return;
+  cancelGestures();shotCall = { push: !shotCall.push };aimDirty = true;updateUI();
+});
+$('nine-push-choice').addEventListener('click', showPushChoice);
+$('nine-push-dialog').addEventListener('cancel', (event) => event.preventDefault());
+for (const [id, take] of [['nine-take', true], ['nine-pass', false]]) $(id).addEventListener('click', () => {
+  if (mode !== 'nine' || !game.choosePush(take)) return;
+  $('nine-push-dialog').close();aimDirty = true;updateUI();
+  toast(`Player ${game.currentPlayer + 1}, hit ${game.lowestBall} first.`);
+});
+$('nine-warning-confirm').addEventListener('click', () => {
+  if (mode !== 'nine' || inShot || warningPlayer === null) return;
+  game.acknowledgeWarning(warningPlayer);
+  $('nine-warning-dialog').close();updateUI();
+});
 for (const button of document.querySelectorAll('[data-spin-x]')) {
   button.addEventListener('click', () => {
     if (!canChangeSpin()) return;
@@ -669,6 +796,12 @@ for (const button of document.querySelectorAll('[data-spin-x]')) {
     setSelectedSpin({ x: Number(button.dataset.spinX), y: Number(button.dataset.spinY) });
   });
 }
+$('cue-elevation').addEventListener('input', (event) => {
+  if (canChangeElevation()) setSelectedElevation(Number(event.target.value));
+});
+for (const button of document.querySelectorAll('[data-elevation]')) button.addEventListener('click', () => {
+  if (canChangeElevation()) setSelectedElevation(Number(button.dataset.elevation));
+});
 $('confirm-restart').addEventListener('click', resetGame);
 $('play-again').addEventListener('click', () => startMatchRack(1 - game.breaker));
 for (const button of document.querySelectorAll('[data-close]')) button.addEventListener('click', () => $(button.dataset.close).close());
@@ -677,7 +810,7 @@ for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListene
   updateUI();
 });
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('click', (event) => {
-  if (event.target !== dialog || dialog.id === 'break-dialog') return;
+  if (event.target !== dialog || ['break-dialog', 'nine-push-dialog'].includes(dialog.id)) return;
   const rect = dialog.getBoundingClientRect();
   if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
 });
@@ -707,7 +840,7 @@ try {
     if (inShot && !document.querySelector('dialog[open]')) {
       accumulator += dt;
       while (accumulator >= fixedStep) {
-        physics.step(fixedStep, mode === 'match' ? (balls) => shotTracker?.sample(balls) : undefined);accumulator -= fixedStep;
+        physics.step(fixedStep, isMatch() ? (balls) => shotTracker?.sample(balls) : undefined);accumulator -= fixedStep;
       }
       if (!physics.moving) {
         settleTime += dt;
@@ -716,7 +849,10 @@ try {
     } else accumulator = 0;
     const ballsChanged = view.sync(physics.balls, dt);
     const shouldRender = ballsChanged || aimDirty || view.needsRender;
-    if (aimDirty) { view.updateAim(physics.balls, angle, shotPower, showAiming(), selectedSpin, aimAids);aimDirty = false; }
+    if (aimDirty) {
+      updateShotUI();updateElevationUI();
+      view.updateAim(physics.balls, angle, shotPower, showAiming(), selectedSpin, aimAids, shotElevation());aimDirty = false;
+    }
     if (shouldRender) view.render();
   };
   requestAnimationFrame(frame);
@@ -733,8 +869,8 @@ try {
   $('loading-state').querySelector('p').textContent = 'This table needs WebGL. Try a current version of Safari, Chrome, or Firefox with hardware acceleration enabled.';
   shotControl.setDisabled(true);
   aimWheel.setDisabled(true);
-  $('spin-button').disabled = true;
+  $('spin-button').disabled = $('elevation-button').disabled = true;
   $('restart-button').disabled = true;
-  $('menu-match').disabled = $('menu-playground').disabled = true;
+  $('menu-match').disabled = $('menu-nine').disabled = $('menu-playground').disabled = true;
   $('menu-status').textContent = 'The table needs WebGL. Open this page in a current browser with hardware acceleration enabled.';
 }

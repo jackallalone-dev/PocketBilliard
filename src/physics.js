@@ -6,19 +6,35 @@ export { EightBallGame, groupOf } from './match-rules.js';
 export const BALL_COLORS = ['#faf6e9', '#e9b52a', '#3776c4', '#d24c3f', '#8d58a5', '#df802e', '#39886c', '#924044', '#171c20', '#e9b52a', '#3776c4', '#d24c3f', '#8d58a5', '#df802e', '#39886c', '#924044'];
 
 export class PoolPhysics {
-  constructor(onEvent = () => {}) {
+  constructor(onEvent = () => {}, rackType = 'eight') {
     this.onEvent = onEvent;
-    this.reset();
+    this.reset(rackType);
   }
 
-  reset() {
+  reset(rackType = 'eight') {
     this.stepNumber = 0;
-    this.balls = [{ id: 0, x: 0, z: TABLE.headSpot + 0.6, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false }];
+    this.balls = [{ id: 0, x: 0, z: TABLE.headSpot + 0.015, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false }];
+    const shuffle = (values) => {
+      for (let i = values.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));[values[i], values[j]] = [values[j], values[i]];
+      }
+      return values;
+    };
+    if (rackType === 'nine') {
+      const remaining = shuffle([3, 4, 5, 6, 7, 8]);
+      const rack = Array.from({ length: 9 }, (_, i) => i === 0 ? 1 : i === 4 ? 9 : i === 8 ? 2 : remaining.pop());
+      const spacing = TABLE.radius * 2 + 0.006;
+      let index = 0;
+      for (const [row, count] of [1, 2, 3, 2, 1].entries()) {
+        for (let col = 0; col < count; col++) {
+          this.balls.push({ id: rack[index++], x: (col - (count - 1) / 2) * spacing, z: TABLE.footSpot - row * spacing * Math.sqrt(3) / 2, ...REST_MOTION, ...REST_ORIENTATION, pocketed: false });
+        }
+      }
+      return;
+    }
     const solid = 1 + Math.floor(Math.random() * 7), stripe = 9 + Math.floor(Math.random() * 7);
     const remaining = Array.from({ length: 15 }, (_, i) => i + 1).filter((id) => ![8, solid, stripe].includes(id));
-    for (let i = remaining.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));[remaining[i], remaining[j]] = [remaining[j], remaining[i]];
-    }
+    shuffle(remaining);
     const rack = Array.from({ length: 15 }, (_, i) => i === 4 ? 8 : i === 10 ? solid : i === 14 ? stripe : remaining.pop());
     const spacing = TABLE.radius * 2 + 0.006;
     let index = 0;
@@ -32,9 +48,9 @@ export class PoolPhysics {
   get cue() { return this.balls[0]; }
   get moving() { return this.balls.some(hasBallMotion); }
 
-  shoot(angle, power, spin = {}) {
+  shoot(angle, power, spin = {}, elevation = 0) {
     if (this.moving || this.cue.pocketed) return false;
-    Object.assign(this.cue, strikeMotion(angle, power, spin));
+    Object.assign(this.cue, strikeMotion(angle, power, spin, elevation));
     return true;
   }
 
@@ -47,7 +63,7 @@ export class PoolPhysics {
 
   step(dt, beforeStep) {
     if (!Number.isFinite(dt) || dt <= 0) return;
-    const maxSpeed = this.balls.reduce((speed, ball) => ball.pocketed ? speed : Math.max(speed, Math.hypot(ball.vx, ball.vz)), 0);
+    const maxSpeed = this.balls.reduce((speed, ball) => ball.pocketed ? speed : Math.max(speed, Math.hypot(ball.vx, ball.vy || 0, ball.vz)), 0);
     // Keep travel below a ball radius even for boosted shots. This prevents
     // skipping ball contacts or crossing a cushion nose between solver steps.
     const steps = Math.max(1, Math.ceil(maxSpeed * dt / (TABLE.radius * 0.75)));
@@ -62,10 +78,17 @@ export class PoolPhysics {
     const r = TABLE.radius;
     for (const b of this.balls) {
       if (b.pocketed) continue;
+      const wasAirborne = (b.y || 0) > 0 || (b.vy || 0) > 0;
       advanceBall(b, dt);
-      const pocket = POCKETS.find((p) => Math.hypot(b.x - p.x, b.z - p.z) < p.captureRadius);
+      const pocket = b.y < r * 0.5 && POCKETS.find((p) => Math.hypot(b.x - p.x, b.z - p.z) < p.captureRadius);
       if (pocket) { this.pocket(b, pocket); continue; }
+      // A ball whose bottom clears the cushion top can fly over it. Once it
+      // leaves the playing area it is off-table, even if it lands on the rail.
+      if ((wasAirborne || b.y > 0) && (Math.abs(b.x) > TABLE.width / 2 + r || Math.abs(b.z) > TABLE.length / 2 + r)) {
+        this.removeOffTable(b);continue;
+      }
       for (const [rail, segment] of CUSHION_SEGMENTS.entries()) {
+        if (b.y > 0.24) break;
         const contact = closestPoint(segment, b.x, b.z);
         const dx = b.x - contact.x, dz = b.z - contact.z;
         const distance = Math.hypot(dx, dz);
@@ -80,9 +103,7 @@ export class PoolPhysics {
         }
       }
       if (Math.abs(b.x) > TABLE.width / 2 + 0.9 || Math.abs(b.z) > TABLE.length / 2 + 0.9) {
-        this.onEvent({ type: 'offTable', id: b.id, step: this.stepNumber });
-        const nearest = POCKETS.reduce((a, p) => Math.hypot(p.x - b.x, p.z - b.z) < Math.hypot(a.x - b.x, a.z - b.z) ? p : a);
-        this.pocket(b, nearest);
+        this.removeOffTable(b);
       }
     }
 
@@ -94,25 +115,37 @@ export class PoolPhysics {
         for (let j = i + 1; j < this.balls.length; j++) {
           const b = this.balls[j];
           if (b.pocketed) continue;
-          const dx = b.x - a.x, dz = b.z - a.z;
-          const distance = Math.hypot(dx, dz);
+          const dx = b.x - a.x, dy = (b.y || 0) - (a.y || 0), dz = b.z - a.z;
+          const distance = Math.hypot(dx, dy, dz);
           if (distance >= r * 2) continue;
           const nx = distance > 0.00001 ? dx / distance : 1;
           const nz = distance > 0.00001 ? dz / distance : 0;
+          const ny = distance > 0.00001 ? dy / distance : 0;
           const correction = (r * 2 - distance + 0.00001) / 2;
           a.x -= nx * correction; a.z -= nz * correction;
           b.x += nx * correction; b.z += nz * correction;
-          const relative = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz;
+          a.y = Math.max(0, (a.y || 0) - ny * correction);
+          b.y = Math.max(0, (b.y || 0) + ny * correction);
+          const relative = (a.vx - b.vx) * nx + ((a.vy || 0) - (b.vy || 0)) * ny + (a.vz - b.vz) * nz;
           if (relative <= 0) continue;
           this.onEvent({ type: 'contact', a: a.id, b: b.id, speed: relative, step: this.stepNumber });
           const impulse = relative * 0.965;
           a.vx -= impulse * nx; a.vz -= impulse * nz;
           b.vx += impulse * nx; b.vz += impulse * nz;
-          ballContactFriction(a, b, nx, nz, impulse);
+          a.vy = (a.vy || 0) - impulse * ny;b.vy = (b.vy || 0) + impulse * ny;
+          if (a.y === 0 && a.vy < 0) a.vy = 0;
+          if (b.y === 0 && b.vy < 0) b.vy = 0;
+          if (Math.abs(ny) < 0.001) ballContactFriction(a, b, nx, nz, impulse);
           if (pass === 0 && relative > 0.35) this.onEvent({ type: 'collision', speed: relative });
         }
       }
     }
+  }
+
+  removeOffTable(ball) {
+    this.onEvent({ type: 'offTable', id: ball.id, step: this.stepNumber });
+    const nearest = POCKETS.reduce((a, p) => Math.hypot(p.x - ball.x, p.z - ball.z) < Math.hypot(a.x - ball.x, a.z - ball.z) ? p : a);
+    this.pocket(ball, nearest);
   }
 
   placeCue() {

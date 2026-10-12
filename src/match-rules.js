@@ -1,11 +1,12 @@
 import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
+import { clampElevation } from './spin.js';
 
 export const RULES_SOURCE = 'https://upatour.com/8-ball-rules/';
 export const groupOf = (id) => id > 0 && id < 8 ? 'solids' : id > 8 && id <= 15 ? 'stripes' : null;
 export const POCKET_NAMES = ['P1 · foot-left', 'P2 · foot-right', 'P3 · side-left', 'P4 · side-right', 'P5 · head-left', 'P6 · head-right'];
 
 export class ShotTracker {
-  constructor(balls, call = {}, angle = 0) {
+  constructor(balls, call = {}, angle = 0, elevation = 0) {
     this.start = balls.map(({ id, x, z, pocketed }) => ({ id, x, z, pocketed }));
     this.call = { ...call };
     this.firstContacts = new Set();this.firstStep = null;
@@ -18,10 +19,11 @@ export class ShotTracker {
       });
     }
     const cue = balls[0], dx = Math.sin(angle), dz = -Math.cos(angle);
+    const horizontal = Math.cos(clampElevation(elevation) * Math.PI / 180);
     this.closeHit = balls.some((b) => {
       if (b.id === 0 || b.pocketed) return false;
       const distance = Math.hypot(b.x - cue.x, b.z - cue.z);
-      return distance <= TABLE.radius * 2 + TABLE.width / 100 && distance > 0 && ((b.x - cue.x) * dx + (b.z - cue.z) * dz) / distance > Math.SQRT1_2 + 1e-7;
+      return distance <= TABLE.radius * 2 + TABLE.width / 100 && distance > 0 && horizontal * ((b.x - cue.x) * dx + (b.z - cue.z) * dz) / distance > Math.SQRT1_2 + 1e-7;
     });
   }
 
@@ -30,7 +32,7 @@ export class ShotTracker {
       const [id, index] = key.split(':').map(Number);
       const ball = balls.find((b) => b.id === id);
       const p = closestPoint(CUSHION_SEGMENTS[index], ball.x, ball.z);
-      if (ball.pocketed || Math.hypot(ball.x - p.x, ball.z - p.z) > TABLE.radius + 0.004) this.frozen.delete(key);
+      if (ball.pocketed || (ball.y || 0) > 0.24 || Math.hypot(ball.x - p.x, ball.z - p.z) > TABLE.radius + 0.004) this.frozen.delete(key);
     }
   }
 
@@ -118,7 +120,7 @@ export class EightBallGame {
     }
 
     if (this.isBreak) {
-      const legalBreak = ids.some((id) => id > 0) || new Set(report.numberedRails || []).size >= 4;
+      const legalBreak = ids.some((id) => id > 0 && !offTable.includes(id)) || new Set(report.numberedRails || []).size >= 4;
       if (!legalBreak) {
         this.currentPlayer = other;
         this.pendingBreak = { offender: shooter, chooser: other };

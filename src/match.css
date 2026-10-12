@@ -5,6 +5,14 @@
 .match-actions button { min-width: 0; height: 32px; white-space: nowrap; border: 1px solid #526247; border-radius: 6px; padding: 7px 9px; color: #cfdbbf; background: #23301f; font-size: 9px; }
 #match-call { grid-column: 1; grid-row: 1; }
 #match-safety { grid-column: 2; grid-row: 1; }
+#nine-push { grid-column: 2; grid-row: 1; }
+.nine-target { grid-column: 1; grid-row: 1; display: flex; align-items: center; min-width: 0; color: var(--accent); font-size: 10px; white-space: nowrap; }
+.game[data-mode="nine"] .pocket-labels { display: none; }
+.game[data-mode="nine"] .ball-tray { gap: 3px; }
+.game[data-mode="nine"] .ball-tray .tray-ball { width: 11px; height: 11px; }
+.game[data-mode="nine"] .ball-tray .tray-ball.next-ball { outline: 1px solid var(--accent); outline-offset: 2px; }
+.player-card.foul-warning .player-group { color: #efac83; }
+.match-settings [hidden] { display: none; }
 .match-placement-slot { grid-column: 3; grid-row: 1; display: grid; grid-template: 32px / minmax(0, 1fr); min-width: 0; }
 .match-placement-slot button { grid-area: 1 / 1; width: 100%; }
 #turn-status { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -38,7 +46,7 @@
   .match-actions { grid-template-columns: minmax(0, 1fr) 290px; grid-template-rows: 32px; gap: 8px; }
 }
 @media (orientation: landscape) and (min-width: 600px) {
-  .game[data-mode="match"] { grid-template-rows: auto minmax(0, 1fr); }
-  .game[data-mode="match"] .table-info { position: static; width: 100%; height: auto; overflow: visible; clip-path: none; grid-row: 1; padding: 0 5px 4px; }
-  .game[data-mode="match"] .table-area { grid-row: 2; }
+  .game:not([data-mode="playground"]) { grid-template-rows: auto minmax(0, 1fr); }
+  .game:not([data-mode="playground"]) .table-info { position: static; width: 100%; height: auto; overflow: visible; clip-path: none; grid-row: 1; padding: 0 5px 4px; }
+  .game:not([data-mode="playground"]) .table-area { grid-row: 2; }
 }

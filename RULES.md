@@ -1,12 +1,12 @@
-# Match rules: UPA-based amateur 8-ball
+# Match rules: UPA-based 8-ball and 9-ball
 
 ## Source and scope
 
-The supplied link, **https://upatour.com/8-ball-rules/**, is the United States Professional Poolplayers Association’s official 8-ball rules page. It was checked on October 10, 2026; the page also links its 2026 official PDF. UPA rules are a specific ruleset—other organizations, including WPA and APA, can handle situations differently.
+Sources are the United States Professional Poolplayers Association’s official [8-ball rules](https://upatour.com/8-ball-rules/) (checked October 10, 2026) and [9-ball rules](https://upatour.com/9-ball-rules/) (checked October 11, 2026). Both pages link their 2026 official PDFs. UPA rules are a specific ruleset—other organizations, including WPA and APA, can handle situations differently.
 
-Pocket Club implements the applicable on-table **amateur** rules from that page. It is a digital adaptation with optional aiming aids, not a certified tournament/referee system. Playground remains unrestricted and does not use the match rule engine.
+Pocket Club implements the applicable on-table rules, choosing the **amateur** variant for 8-ball. It is a digital adaptation with optional aiming aids, not a certified tournament/referee system. Each match mode has an independent session. Playground remains unrestricted and does not use the match rule engine.
 
-## Implemented
+## 8-ball implementation
 
 | Source | In-game behavior |
 | --- | --- |
@@ -27,19 +27,49 @@ Pocket Club implements the applicable on-table **amateur** rules from that page.
 | 9.9 | A declared safety ends the inning even if an object ball falls. It does not assign groups on an open table. |
 | 9.10 | After three consecutive foul innings from each player, a stalemate action becomes available. Both players must explicitly agree that the stated stalemate conditions apply; then a new rack is played. |
 
-## Digital conventions and non-applicable items
+## 9-ball implementation
 
-- **Explicit calls:** UPA permits obvious balls/pockets without a verbal declaration. This interface requires an explicit call on every non-break shot, avoiding ambiguous guesses about a player’s intended bank, kick, combination, or 8-ball pocket. Declaring Safety is the alternative.
+Section references in this table are to the UPA 9-ball source.
+
+| Source | In-game behavior |
+| --- | --- |
+| 1, 2.1 | Diamond rack: 1 on the foot spot, 9 in the center, 2 at the rear, and the other numbers randomized. |
+| 2 | Alternating breakers by default; an agreed opening breaker can be selected in New Game. |
+| 3, 7.10 | Break from behind the head string, hitting 1 first. Pocket a numbered ball or send at least three **distinct object balls** to rails. An off-table ball does not count as a pocket toward this requirement. |
+| 3 | Illegal break: re-rack; the opponent chooses who breaks. A foul on a legal break gives ball in hand anywhere and counts toward the shooter's consecutive fouls. |
+| 4 | Legally pocketing the 9 on the break wins. A fouled 9 is spotted instead. |
+| 1, 6, 10.5 | Hit the lowest remaining ball first. Any legal numbered pocket retains the turn; a dry legal shot passes it. Pocketing the 9 legally wins, including combinations. No called-pocket requirement. |
+| 5 | A declared push-out is available only on the shot immediately after a legal break, including a legal break with a foul. No first-contact or rail requirement applies; other fouls still apply. After a legal push, the opponent chooses to take the position or pass it back. |
+| 5 | Balls pocketed on a push stay down, except the 9, which is spotted. A legal push clears the shooter's consecutive-foul streak. |
+| 7.2–7.5, 7.9 | Scratch, wrong first ball, missing all object balls, no rail/pocket after contact, off-table balls, and close double-hit approaches give ball in hand anywhere. Frozen-rail handling uses the same chronological tracker as 8-ball. |
+| 1, 7.5 | A 9 removed on a foul or driven off the table is spotted; other removed numbered balls stay down. |
+| 8.2 | Three consecutive fouls by the same player lose the game if the required warning was acknowledged after the second foul. Without the warning, a third foul does not lose; another warning opportunity is presented. A legal shot clears that player's count and warning. |
+| 8.3 | Current player can concede through Settings. |
+| 9.2 | Ambiguous split contacts within the same physics step favor a legal lowest-ball hit. |
+
+### 9-ball controls and conventions
+
+1. Place and confirm the cue for the break or ball in hand. The HUD shows the lowest target and each player's consecutive-foul count.
+2. Aim and shoot without selecting a pocket. To push on the shot after the break, select **Push** before shooting; selecting it again cancels the declaration.
+3. After a legal push, choose to take the position or pass it back in the decision dialog.
+4. After a second foul, the opponent should warn the shooter and select **Warning given**. This acknowledgment records the digital equivalent of the required verbal warning. Dismissing the dialog does not record a warning.
+5. A re-spotted 9 goes on the foot spot. If occupied, the app searches for the nearest clear point on the long string toward the foot rail, then toward the head rail if necessary. This blocked-spot placement is a digital convention because the linked page specifies the foot spot without detailing an occupied-spot procedure. Other balls are not moved.
+
+## Shared digital conventions and non-applicable items
+
+- **8-ball explicit calls:** UPA permits obvious balls/pockets without a verbal declaration. This interface requires an explicit call on every non-break 8-ball shot, avoiding ambiguous guesses about a player’s intended bank, kick, combination, or 8-ball pocket. Declaring Safety is the alternative. These controls do not apply to 9-ball.
 - **Ball in hand:** use the ball or its offset handle, then confirm. Placement automatically avoids overlaps rather than permitting accidental disturbance fouls. The cue returns to a valid provisional spot after a scratch, but the incoming player can reposition it.
 - **Illegal actions prevented by the interface:** shooting while balls move, moving object balls during match play, and multiple cue strikes in one stroke. The displayed active player controls each hot-seat inning; the software cannot identify which physical person is touching the device.
 - **First break:** there are no player speed ratings or a physical lag minigame. Player 1 is the initial default, with an agreed breaker selectable through New Game.
-- **Three-foul loss:** section 8.2 explicitly says this is **pro only**, not amateur league play. It is not enforced as a loss here. Foul-inning counters are used only to make the mutual-stalemate action available.
+- **8-ball three-foul loss:** the 8-ball source's section 8.2 explicitly says this is **pro only**, not amateur league play. In 8-ball, foul-inning counters are used only to make the mutual-stalemate action available. In 9-ball, the warned three-foul loss applies as described above.
 - **No shot clock:** section 9.1 makes this discretionary. No referee shot clock is selected for this local game.
 - **Physical/officiating rules:** foot on floor, cue/equipment standards, coaching time-outs, interference, physical ball tapping, marking cloth, match lateness, referees, disputes, and outside interference are not modeled.
-- **Pocket/flight phenomena:** the flat-table engine has no jump shots, pockets filled with supporting balls, suspended balls, pocket rebounds, table defects, or delayed hanging-ball drops. A captured ball is permanently pocketed for that shot; any engine-detected off-table ball still receives the rule penalty.
-- **Aiming aids:** guide lines and trajectory estimates are optional digital assistance. They can be independently disabled in Settings. The cyan cue-ball estimate is a short prediction, not a guarantee of the entire shot.
+- **Jump shots:** both modes permit elevated downward strokes (UPA sections 7.7 and 9.7). The player manually adjusts cue elevation, with minimum shaft clearance calculated from nearby balls. Takeoff is an approximate rebound from the cloth; gravity, airborne ball contacts, landing bounces, and off-table fouls are simulated. A ball passed over without touching does not count as first contact. Jumping does not waive the normal target, pocket, or rail rules. Scooping and miscues are not modeled.
+- **Close-ball geometry:** the existing UPA 45° close-hit check uses the cue's three-dimensional approach angle, including elevation. That rule is separate from shaft clearance: the minimum elevation to clear a ball behind the cue is calculated from geometry and is not fixed at 45°.
+- **Pocket/flight phenomena:** pockets filled with supporting balls, suspended balls, pocket rebounds, table defects, and delayed hanging-ball drops are not modeled. A captured ball is permanently pocketed for that shot; any engine-detected off-table ball still receives the rule penalty.
+- **Aiming aids:** guide lines and trajectory estimates are optional digital assistance. They can be independently disabled in Settings. The cyan cue-ball estimate is a short prediction for level shots, not a guarantee of the entire shot. Elevated shots use an amber estimate through the first landing or collision, at the selected power (65% while idle).
 
-## Controls added for match play
+## 8-ball controls
 
 1. Place/confirm the cue for a break or ball in hand.
 2. After the break, choose **Call shot** → ball → pocket (P1–P6), or **Safety**.

@@ -16,7 +16,7 @@ export class CuePlacement {
   prepare() {
     const cue = this.selected;
     const x = cue.pocketed ? 0 : cue.x;
-    const z = cue.pocketed ? TABLE.headSpot + 0.6 : cue.z;
+    const z = cue.pocketed ? TABLE.headSpot + 0.015 : cue.z;
     return this.move(0, x, z);
   }
   confirm() {

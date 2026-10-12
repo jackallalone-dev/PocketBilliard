@@ -8,9 +8,10 @@
 .shot-power.boosted output { color: #ffc48c; }
 .shot-power.boosted:not(.cancelled) .power-thumb, .shot-power.boosted:not(.cancelled) .power-fill { background: #ed9f62; }
 .power-hint { bottom: 8px; }
-.aim-wheel { flex: 0 1 112px; min-height: 52px; }
+.aim-wheel { flex: 1 1 0; min-height: 52px; }
 .wheel-marker { top: calc(50% + 1px); }
-.spin-button { --spin-x: 0; --spin-y: 0; flex: 0 1 50px; min-height: 40px; width: 44px; padding: 4px 0; border: 1px solid #495d40; border-radius: 12px; background: #1c2920; color: #c3d0bc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 6px; letter-spacing: .6px; }
+.spin-button { --spin-x: 0; --spin-y: 0; flex: 0 0 44px; min-height: 40px; width: 44px; padding: 4px 0; border: 1px solid #495d40; border-radius: 12px; background: #1c2920; color: #c3d0bc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 6px; letter-spacing: .6px; }
+.elevation-button > #elevation-label { font: 18px 'Space Grotesk', sans-serif; color: var(--accent); }
 .spin-button:hover { border-color: var(--accent); }
 .spin-button:disabled { opacity: .4; }
 .mini-cue-ball { position: relative; display: block; width: 25px; height: 25px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffef5, #e6e3d4 60%, #a5ae9e); box-shadow: 0 2px 4px #0005; }
@@ -32,4 +33,25 @@
 .spin-presets button { padding: 9px 10px; border: 1px solid #526346; border-radius: 6px; color: #cbd8c1; background: #263322; font-size: 10px; }
 .spin-presets button:hover { border-color: var(--accent); }
 .spin-modal .rules-note { margin-bottom: 16px; }
+.elevation-control { border-bottom: 1px solid #526346; margin-bottom: 20px; padding-bottom: 2px; }
+.elevation-heading, .elevation-scale { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.elevation-heading { font-size: 13px; color: #d4ddc9; }
+.elevation-heading output { font: 24px 'Space Grotesk', sans-serif; color: var(--accent); }
+svg.elevation-profile { display: block; width: 100%; height: 112px; margin: 4px 0; }
+.elevation-cloth { stroke: #668262; stroke-width: 3; }.elevation-ball { fill: #f4f0df; stroke: #afbaa2; }
+.elevation-shaft { stroke: #e2bc7c; stroke-width: 5; stroke-linecap: round; }.elevation-tip { stroke: #82c4c3; stroke-width: 4; }.elevation-direction { stroke: var(--accent); }
+#cue-elevation { width: 100%; height: 40px; margin: 0; accent-color: var(--accent); touch-action: pan-y; }
+.elevation-scale { font-size: 9px; color: #aabc9f; margin-bottom: 12px; }
+.elevation-presets button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.shot-effect { display: block; margin: 12px 0; font-size: 12px; color: #ffbc72; }
+.shot-effect[data-curve="true"] { color: #c5a2ff; }
 @media (max-height: 520px) { .spin-selector { width: 190px; }.spin-modal { padding: 25px; }.spin-modal h1 { font-size: 26px; } }
+@media (max-height: 400px) {
+  .control-dock { gap: 4px; }
+  .spin-button { flex-basis: 32px; min-height: 32px; padding: 2px 0; gap: 1px; }
+  .mini-cue-ball { width: 18px; height: 18px; }
+  .elevation-button > #elevation-label { font-size: 16px; }
+  .shot-power { min-height: 80px; }
+  .power-track { top: 38px; bottom: 18px; }
+  .aim-wheel { min-height: 44px; }
+}

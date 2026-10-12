@@ -1,6 +1,6 @@
 import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
 import { REST_MOTION, REST_ORIENTATION } from './ball-motion.js';
-import { clampSpin } from './spin.js';
+import { clampSpin, clampElevation } from './spin.js';
 
 const MARGIN = 0.008;
 const SEPARATION = TABLE.radius * 2 + MARGIN;
@@ -68,6 +68,7 @@ export class Playground {
     this.setup = copyBalls(this.balls);
     this.setupAngle = 0;
     this.setupSpin = { x: 0, y: 0 };
+    this.setupElevation = 0;
   }
 
   get selected() { return this.balls.find((ball) => ball.id === this.selectedId); }
@@ -97,11 +98,12 @@ export class Playground {
     return true;
   }
 
-  commit(angle, spin = {}) {
+  commit(angle, spin = {}, elevation = 0) {
     if (!this.editing || this.balls[0].pocketed) return false;
     this.setup = copyBalls(this.balls);
     this.setupAngle = angle;
     this.setupSpin = clampSpin(spin);
+    this.setupElevation = clampElevation(elevation);
     this.editing = false;
     this.attempts = 0;
     return true;

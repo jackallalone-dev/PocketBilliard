@@ -18,6 +18,7 @@
         <button id="menu-continue" class="primary-button menu-continue" hidden>Continue your game <span>↗</span></button>
         <div class="menu-modes">
           <button id="menu-match" class="menu-mode"><span class="menu-mode-icon">01 / 02</span><strong>Two-player 8-ball</strong><span>Share a device. Take turns. Sink the 8 last.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
+          <button id="menu-nine" class="menu-mode"><span class="menu-mode-icon">09</span><strong>Two-player 9-ball</strong><span>Hit the lowest first. Finish on the 9.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
           <button id="menu-playground" class="menu-mode"><span class="menu-mode-icon">✳</span><strong>Playground</strong><span>Arrange the balls. Build a trick shot. Try again.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
         </div>
         <div class="menu-links"><button id="menu-settings" class="text-button">Settings</button><span>·</span><button id="menu-help" class="text-button">How to play</button></div>
@@ -42,7 +43,7 @@
             <div class="player-top"><span class="player-avatar">01</span><div><h2>Player 1</h2><span class="player-group" id="group-0">OPEN TABLE</span></div><span class="turn-dot" aria-label="Current turn"></span></div>
             <div class="ball-tray" id="tray-0" aria-label="Player 1 remaining balls"></div>
           </section>
-          <div class="score-divider"><span>8</span></div>
+          <div class="score-divider"><span id="game-ball-badge">8</span></div>
           <section class="player-card" id="player-1" aria-label="Player 2">
             <div class="player-top"><span class="player-avatar">02</span><div><h2>Player 2</h2><span class="player-group" id="group-1">OPEN TABLE</span></div><span class="turn-dot" aria-label="Current turn"></span></div>
             <div class="ball-tray" id="tray-1" aria-label="Player 2 remaining balls"></div>
@@ -61,11 +62,14 @@
             <span id="match-instruction" aria-live="polite">Place the cue behind the head string.</span>
             <div class="match-buttons">
               <button id="match-call">Call shot</button>
+              <span id="nine-target" class="nine-target" hidden>Hit 1 first</span>
               <button id="match-safety" aria-pressed="false">Safety</button>
+              <button id="nine-push" aria-pressed="false" hidden>Push</button>
               <div class="match-placement-slot">
                 <button id="match-place" hidden>Reposition cue</button>
                 <button id="match-confirm" hidden>Position ready ✓</button>
                 <button id="match-break-choice" hidden>Choose breaker</button>
+                <button id="nine-push-choice" hidden>Take / pass</button>
               </div>
             </div>
           </div>
@@ -81,7 +85,8 @@
           </div>
           <section id="pocketed-panel" class="pocketed-panel" aria-label="Pocketed balls"><span class="pocketed-label" aria-hidden="true">DOWN</span><ol id="pocketed-balls" class="pocketed-list" tabindex="0" aria-label="Balls in pocketing order. Scroll to see all pocketed balls."></ol><span id="pocketed-empty" aria-label="No balls pocketed">—</span><span id="pocket-announcement" class="sr-only" aria-live="polite"></span></section>
           <div id="control-dock" class="control-dock" role="group" aria-label="Aiming and shooting controls">
-            <button id="spin-button" class="spin-button" aria-label="Cue-ball spin: center ball" title="Choose where the cue hits the white ball"><span class="mini-cue-ball" aria-hidden="true"><span></span></span><span>SPIN</span></button>
+            <button id="spin-button" class="spin-button" aria-label="Cue-ball spin" title="Adjust cue-ball spin"><span class="mini-cue-ball" aria-hidden="true"><span></span></span><span>SPIN</span></button>
+            <button id="elevation-button" class="spin-button elevation-button" aria-label="Cue-stick angle" title="Adjust cue-stick angle"><span id="elevation-label" aria-hidden="true">0°</span><span>ANGLE</span></button>
             <div id="shot-power" class="shot-power" role="slider" tabindex="0" aria-label="Shot power, up to 200 percent. Drag down and release to shoot." aria-orientation="vertical" aria-valuemin="0" aria-valuemax="200" aria-valuenow="0" aria-valuetext="0 percent. Pull down to charge." aria-describedby="power-instructions" aria-disabled="true">
               <span class="power-label">POWER</span>
               <output id="power-value" aria-hidden="true">0<span>%</span></output>
@@ -108,12 +113,15 @@
       <span class="eyebrow">WELCOME TO THE CLUB</span><h1>A little friendly<br />competition.</h1><p class="modal-intro">Grab a friend. Share a screen. Make your shot.</p>
       <div class="instruction"><span>01</span><div><h3>Find your angle</h3><p>Tap the cloth to aim at a point, or grab and drag the stick to rotate it around the cue ball. Roll the FINE AIM wheel up or down for tiny adjustments. The dotted line shows your ball’s path.</p></div></div>
       <div class="instruction"><span>02</span><div><h3>Pull, then release</h3><p>Pull down on the side power control: halfway is 100%, and a full pull is 200%. Release to shoot. Slide back up or move sideways to cancel. Choose the left or right side in Settings.</p></div></div>
-      <div class="instruction"><span>03</span><div><h3>Call it, then make it</h3><p>After the break, choose your ball and pocket with Call shot, or declare Safety. Groups stay open until a called ball is legally pocketed. Clear your group, then call and pocket the 8 on a later shot.</p></div></div>
+      <div class="instruction"><span>03</span><div><h3>8-ball: call it, then make it</h3><p>After the break, choose your ball and pocket with Call shot, or declare Safety. Groups stay open until a called ball is legally pocketed. Clear your group, then call and pocket the 8 on a later shot.</p></div></div>
       <div class="rules-note"><strong>UPA amateur rules:</strong> a legal break pockets a numbered ball or sends four distinct object balls to rails. A legal 8-ball break wins; an 8-ball break with a foul loses. Fouls give the opponent ball in hand—behind the head string after a break foul, anywhere otherwise. Hit a legal ball first, then reach a rail or pocket. Scratching while shooting at the 8 only loses if the 8 also falls.</div>
       <div class="rules-note">Use the move handle to place the cue, then confirm its position. After a break foul, the first object ball hit must be outside the kitchen. Close cue/object-ball shots require a 45° approach under UPA’s double-hit rule. Ordinary fouls do not respot object balls. Safety ends your turn even if balls drop.</div>
       <div class="rules-note">Rules source: <a href="https://upatour.com/8-ball-rules/" target="_blank" rel="noopener noreferrer">UPA Official 8-Ball Rules</a>. This digital version requires an explicit call for every non-break shot. The first breaker is selected instead of a physical lag; subsequent racks default to alternating breaks. The pro-only three-foul loss rule, optional referee shot clock, and physical conduct/equipment rules are not enabled. See README.md for the implementation details.</div>
+      <div class="rules-note"><strong>9-ball:</strong> hit the lowest numbered ball first. A legal 9-ball pocket wins, including on the break or in a combination. No pockets need to be called. A legal break pockets a ball or sends three object balls to rails. Fouls give ball in hand anywhere; an illegally pocketed or off-table 9 is re-spotted.</div>
+      <div class="rules-note"><strong>Push-out:</strong> only on the shot immediately after a legal break, declare Push before shooting. A push needs no object contact or rail, but scratches and other fouls still count. A pushed 9 is re-spotted. The opponent chooses to take the next shot or pass it back. Three consecutive fouls lose in 9-ball only if the second-foul warning was given; the warning dialog lets the opponent acknowledge it. Source: <a href="https://upatour.com/9-ball-rules/" target="_blank" rel="noopener noreferrer">UPA Official 9-Ball Rules</a>.</div>
       <div class="rules-note"><strong>Playground:</strong> choose Playground from the main menu. In Arrange, drag a ball or its offset handle, or use ＋ Balls to select a ball to place. Switch to Shoot to practice without turns or 8-ball penalties. Retry setup restores your saved arrangement. Open the menu by tapping the Pocket Club logo.</div>
       <div class="rules-note"><strong>Cue-ball spin:</strong> tap SPIN above the power control. Hit below center for draw, above center for follow, or left/right for sidespin. Draw needs backspin remaining when the cue ball hits another ball; longer distances and softer shots wear it off.</div>
+      <div class="rules-note"><strong>Cue elevation / jump shots:</strong> open ANGLE and move the Vertical cue angle slider. Raise the cue butt up to 75°; the minimum is calculated from the actual height and distance of balls blocking the stick. Auto clearance selects that minimum. Angle and power determine jump height and reach. The amber guide estimates the first landing or collision (65% power while idle). A jump can clear a blocker, clip it, or leave the table; normal match fouls still apply.</div>
       <button class="primary-button" data-close="help-dialog">Let’s play <span>↗</span></button>
     </dialog>
     <dialog id="balls-dialog" class="modal small-modal" aria-labelledby="balls-title">
@@ -122,15 +130,31 @@
       <p class="modal-intro">Choose a ball, then tap the cloth to add it. Balls already on the table are selected for dragging.</p>
       <div id="ball-palette" class="ball-palette" role="group" aria-label="Available balls"></div>
     </dialog>
+    <dialog id="elevation-dialog" class="modal spin-modal" aria-labelledby="cue-angle-title">
+      <button class="modal-close icon-button" data-close="elevation-dialog" aria-label="Close cue-stick angle controls">×</button>
+      <span class="eyebrow">SET UP YOUR STROKE</span><h1 id="cue-angle-title">Cue-stick angle.</h1>
+      <section class="elevation-control" aria-labelledby="elevation-title">
+        <div class="elevation-heading"><label id="elevation-title" for="cue-elevation">Vertical cue angle</label><output id="elevation-value" for="cue-elevation">0°</output></div>
+        <svg class="elevation-profile" viewBox="0 0 260 150" role="img" aria-label="Side view: raising the back of the cue points its tip downward"><path d="M20 141H245" class="elevation-cloth"/><circle cx="201" cy="128" r="12" class="elevation-ball"/><g id="elevation-cue"><path d="M60 128H180" class="elevation-shaft"/><path d="M180 128H188" class="elevation-tip"/></g><path d="m224 118 12 10-12 10" class="elevation-direction"/></svg>
+        <input id="cue-elevation" type="range" min="0" max="75" step="1" value="0" aria-describedby="elevation-clearance elevation-help" />
+        <div class="elevation-scale"><span>Minimum clearance</span><span>75° steep</span></div>
+        <div class="spin-presets elevation-presets"><button data-elevation="0">Auto clearance</button><button data-elevation="75">Steepest</button></div>
+        <p id="elevation-clearance" class="rules-note" aria-live="polite">Cue is clear.</p>
+        <output id="shot-effect" class="shot-effect" aria-live="polite">Level stroke · 65% preview</output>
+        <p id="elevation-help" class="rules-note">Slide to raise the cue butt manually. The minimum follows nearby balls’ height and distance. Center contact with elevation and a firm stroke produces a jump. Move the contact dot left/right with elevation for swerve or massé; a softer stroke bends sooner. A shot can hop, then curve after landing.</p>
+        <p class="rules-note">Amber predicts an elevated center-axis path; violet predicts a curve. The amber ring marks the first landing. Predictions continue after landing toward the first collision, up to a limited distance/time, using selected power (65% while idle).</p>
+      </section>
+      <button class="primary-button" data-close="elevation-dialog">Set angle <span>↗</span></button>
+    </dialog>
     <dialog id="spin-dialog" class="modal spin-modal" aria-labelledby="spin-title">
-      <button class="modal-close icon-button" data-close="spin-dialog" aria-label="Close spin control">×</button>
+      <button class="modal-close icon-button" data-close="spin-dialog" aria-label="Close cue-ball spin controls">×</button>
       <span class="eyebrow">CHOOSE YOUR CONTACT POINT</span><h1 id="spin-title">Cue-ball spin.</h1>
       <p class="modal-intro">View from behind the cue. Swipe anywhere on the ball to move the dot by your swipe distance. Touching alone does not reposition it.</p>
       <div class="spin-selector"><span class="spin-top">FOLLOW</span><span class="spin-left">LEFT</span><span class="spin-right">RIGHT</span><span class="spin-bottom">DRAW</span><div id="spin-pad" class="spin-pad" role="group" tabindex="0" aria-label="Cue-ball contact point" aria-describedby="spin-help"><span class="spin-safe-ring" aria-hidden="true"></span><span class="spin-crosshair" aria-hidden="true"></span><span class="spin-marker" aria-hidden="true"></span></div></div>
       <output id="spin-value" class="spin-value" aria-live="polite">Center ball</output>
       <div class="spin-presets" role="group" aria-label="Spin presets"><button data-spin-x="0" data-spin-y="0">Center</button><button data-spin-x="0" data-spin-y="-1">Draw ↓</button><button data-spin-x="0" data-spin-y="1">Follow ↑</button><button data-spin-x="-1" data-spin-y="0">Left ←</button><button data-spin-x="1" data-spin-y="0">Right →</button></div>
-      <p id="spin-help" class="rules-note">Swipe down for draw, up for follow, or sideways for sidespin. Strength depends on power and distance. The cyan cue-ball line is a short estimate after contact, not a full-shot prediction. Arrow keys adjust the dot; Home centers it.</p>
-      <button class="primary-button" data-close="spin-dialog">Set the shot <span>↗</span></button>
+      <p id="spin-help" class="rules-note">Swipe down for draw, up for follow, or sideways for sidespin. With an elevated cue, left/right contact also curves the ball toward that side once it grips the cloth. A level cue’s sidespin changes cushion rebounds without bending the free path. Arrow keys adjust the dot; Home centers it.</p>
+      <button class="primary-button" data-close="spin-dialog">Set spin <span>↗</span></button>
     </dialog>
     <dialog id="settings-dialog" class="modal small-modal" aria-labelledby="settings-title">
       <button class="modal-close icon-button" data-close="settings-dialog" aria-label="Close settings">×</button>
@@ -138,12 +162,14 @@
       <fieldset class="side-setting"><legend>Aiming & shooting control side</legend><div class="side-options"><label><input type="radio" name="power-side" value="left" /><span>← Left</span></label><label><input type="radio" name="power-side" value="right" checked /><span>Right →</span></label></div></fieldset>
       <p class="modal-intro settings-note">Your choice is saved on this device. Both controls sit beside the table. Use the wheel for fine aim, then pull down and release the power control to shoot.</p>
       <fieldset class="aim-settings"><legend>Aiming aids</legend><label><input type="checkbox" data-aim-aid="guideLine" checked /><span>Initial guide line</span></label><label><input type="checkbox" data-aim-aid="targetLine" checked /><span>Target-ball line <small>gold</small></span></label><label><input type="checkbox" data-aim-aid="cueLine" checked /><span>White-ball path <small>cyan · estimated</small></span></label><label><input type="checkbox" data-aim-aid="contactCircle" checked /><span>Contact-point circle</span></label></fieldset>
-      <div id="match-settings" class="match-settings"><span>UPA-based amateur match</span><button id="match-concede" class="secondary-button">Concede game</button><button id="match-stalemate" class="secondary-button">Agree stalemate / re-rack</button><small>Stalemate requires three consecutive foul innings from each player and both players’ agreement.</small></div>
+      <div id="match-settings" class="match-settings"><span id="match-rules-label">UPA-based amateur 8-ball</span><button id="match-concede" class="secondary-button">Concede game</button><button id="match-stalemate" class="secondary-button">Agree stalemate / re-rack</button><small id="stalemate-note">Stalemate requires three consecutive foul innings from each player and both players’ agreement.</small></div>
       <button class="primary-button" data-close="settings-dialog">Back to the table <span>↗</span></button>
     </dialog>
     <dialog id="restart-dialog" class="modal small-modal"><span class="eyebrow">FRESH FELT, FRESH START</span><h1>Rack ’em up?</h1><p class="modal-intro">The next rack defaults to the other player breaking. Choose the opening breaker here if you have agreed a different start.</p><label class="breaker-select">Breaker <select id="restart-breaker"><option value="0">Player 1</option><option value="1">Player 2</option></select></label><div class="modal-actions"><button class="secondary-button" data-close="restart-dialog">Keep playing</button><button class="primary-button" id="confirm-restart">New game ↗</button></div></dialog>
     <dialog id="call-dialog" class="modal small-modal" aria-labelledby="call-title"><button class="modal-close icon-button" data-close="call-dialog" aria-label="Cancel shot call">×</button><span class="eyebrow">DECLARE YOUR SHOT</span><h1 id="call-title">Ball & pocket.</h1><p class="modal-intro">Pick one ball and its pocket. Pocket labels P1–P6 are shown on the table. Banks and combinations need no extra details.</p><div id="call-balls" class="call-balls" role="group" aria-label="Called ball"></div><div id="call-pockets" class="call-pockets" role="group" aria-label="Called pocket"></div><button id="confirm-call" class="primary-button" disabled>Call shot <span>↗</span></button></dialog>
     <dialog id="break-dialog" class="modal small-modal" aria-labelledby="break-title"><span class="eyebrow">ILLEGAL BREAK · RE-RACK</span><h1 id="break-title">Choose the breaker.</h1><p id="break-detail" class="modal-intro"></p><div class="break-options"><button id="break-self" class="primary-button">I’ll break</button><button id="break-again" class="secondary-button">Ask the other player to break again</button></div></dialog>
+    <dialog id="nine-push-dialog" class="modal small-modal" aria-labelledby="push-title"><span class="eyebrow">AFTER THE PUSH-OUT</span><h1 id="push-title">Take it or pass?</h1><p id="push-detail" class="modal-intro"></p><div class="break-options"><button id="nine-take" class="primary-button">Take the shot</button><button id="nine-pass" class="secondary-button">Pass back to the pusher</button></div></dialog>
+    <dialog id="nine-warning-dialog" class="modal small-modal" aria-labelledby="warning-title"><span class="eyebrow">9-BALL · TWO-FOUL WARNING</span><h1 id="warning-title">Two fouls.</h1><p id="nine-warning-detail" class="modal-intro"></p><div class="break-options"><button id="nine-warning-confirm" class="primary-button">Warning given</button><button class="secondary-button" data-close="nine-warning-dialog">Continue without warning</button></div></dialog>
     <dialog id="concede-dialog" class="modal small-modal"><h1>Concede this game?</h1><p id="concede-detail" class="modal-intro"></p><div class="modal-actions"><button class="secondary-button" data-close="concede-dialog">Keep playing</button><button id="confirm-concede" class="primary-button">Concede</button></div></dialog>
     <dialog id="stalemate-dialog" class="modal small-modal"><h1>Agree a stalemate?</h1><p class="modal-intro">Both players must agree that attempts to move or pocket a ball risk losing the game after three consecutive foul innings each.</p><label class="agreement"><input type="checkbox" id="stalemate-p1" /> Player 1 agrees</label><label class="agreement"><input type="checkbox" id="stalemate-p2" /> Player 2 agrees</label><div class="modal-actions"><button class="secondary-button" data-close="stalemate-dialog">Keep playing</button><button id="confirm-stalemate" class="primary-button" disabled>Re-rack</button></div></dialog>
     <dialog id="winner-dialog" class="modal winner-modal"><span class="winner-ball">8</span><span class="eyebrow">THAT’S A WRAP</span><h1 id="winner-title">Player 1 wins.</h1><p id="winner-detail" class="modal-intro"></p><button class="primary-button" id="play-again">One more round <span>↗</span></button><button class="text-button winner-close" data-close="winner-dialog">Admire the table</button></dialog>
