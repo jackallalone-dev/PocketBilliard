@@ -14,8 +14,10 @@ import { PocketHistory } from './pocket-history.js';
 import { Playground } from './playground.js';
 import { BallPlacementControl } from './ball-placement.js';
 import { SpinControl } from './spin-control.js';
+import { SpinView } from './spin-view.js';
 import { clampSpin, spinDescription, clampElevation } from './spin.js';
-import { minimumCueElevation, cueObstruction } from './cue-elevation.js';
+import { minimumCueElevation, cueObstruction, cueContact } from './cue-elevation.js';
+import { TABLE } from './table-geometry.js';
 import { shotEffects } from './shot-effects.js';
 import { ShotTracker, POCKET_NAMES } from './match-rules.js';
 import { CuePlacement } from './cue-placement.js';
@@ -46,6 +48,7 @@ let tableAiming;
 let aimWheel;
 let ballPlacement;
 let spinControl;
+let spinView;
 let selectedSpin = { x: 0, y: 0 };
 let selectedElevation = 0;
 let aimAids = loadAimAids();
@@ -162,12 +165,22 @@ function updateElevationUI() {
   $('cue-elevation').setAttribute('aria-valuetext', `${elevation} degrees above the table. Minimum ball clearance ${minimum} degrees.`);
   $('elevation-value').textContent = `${elevation}°`;
   $('elevation-label').textContent = `${elevation}°`;
-  $('elevation-cue').setAttribute('transform', `rotate(${elevation} 188 128)`);
+  $('spin-elevation').min = String(minimum);
+  $('spin-elevation').value = String(elevation);
+  $('spin-elevation').setAttribute('aria-valuetext', `${elevation} degrees above the table. Minimum ball clearance ${minimum} degrees.`);
+  $('spin-elevation-value').textContent = `${elevation}°`;
   const effects = shotEffects(selectedSpin, elevation, shotPower || 0.65);
   $('shot-effect').textContent = `${effects.label} · ${Math.round((shotPower || 0.65) * 100)}% preview`;
   $('shot-effect').dataset.curve = String(effects.curve);
   const blocked = cueObstruction(physics.balls, angle, selectedSpin, elevation);
-  $('elevation-clearance').textContent = blocked !== null ? `Ball ${blocked} blocks the cue even at this height. Change aim or contact point.` : minimum > 0 ? `Ball clearance needs at least ${minimum}°. Raise further for a steeper jump.` : 'Cue is clear. Raise the butt to strike down and jump; 0° is flat.';
+  const lowerBlocked = cueObstruction(physics.balls, angle, selectedSpin, selectedElevation);
+  const clearance = blocked !== null ? `Ball ${blocked} blocks the cue even at this height. Change aim or contact point.` : lowerBlocked !== null && selectedElevation < elevation ? `Ball ${lowerBlocked} blocks the lower cue (amber ghost). Cue raised to ${elevation}° to clear it. Use Clearance view to inspect.` : minimum > 0 ? `Cue is clear at ${elevation}°. Nearby balls need at least ${minimum}° clearance.` : 'Cue is clear. Raise the butt to strike down; 0° is flat.';
+  $('elevation-clearance').textContent = $('spin-clearance').textContent = clearance;
+  $('spin-clearance').dataset.blocked = String(blocked !== null || lowerBlocked !== null);
+  const contact = cueContact(physics.cue, angle, selectedSpin, elevation);
+  const contactHeight = (contact.y - TABLE.radius - 0.028 - (physics.cue.y || 0)) / TABLE.radius;
+  $('spin-contact-height').textContent = Math.abs(contactHeight) < 0.015 ? 'Tip contact is on the ball’s equator.' : `Tip contact is ${Math.round(Math.abs(contactHeight) * 100)}% of a radius ${contactHeight > 0 ? 'above' : 'below'} the equator${elevation > 0 ? ` at ${elevation}° cue angle` : ''}.`;
+  spinView?.update(physics.balls, angle, selectedSpin, elevation, selectedElevation);
   for (const button of document.querySelectorAll('[data-elevation]')) button.setAttribute('aria-pressed', String(Number(button.dataset.elevation) === selectedElevation));
   const spinLabel = `Cue-ball spin: ${spinDescription(selectedSpin)}. Adjust contact point.`;
   $('spin-button').setAttribute('aria-label', spinLabel);$('spin-button').title = spinLabel;
@@ -388,6 +401,22 @@ function openDialog(id) {
   cancelGestures();
   if (id === 'restart-dialog') $('restart-breaker').value = String(1 - game.breaker);
   $(id).showModal();
+  if (id === 'spin-dialog' || id === 'elevation-dialog') {
+    const host = $(id === 'spin-dialog' ? 'spin-pad' : 'elevation-preview');
+    const cameraView = id === 'spin-dialog' ? 'contact' : 'side';
+    for (const button of document.querySelectorAll('[data-stroke-view]')) button.setAttribute('aria-pressed', String(button.dataset.strokeView === cameraView));
+    try {
+      spinView ??= new SpinView(view);
+      spinView.view = cameraView;
+      spinView.mount(host, physics.balls);
+      delete host.dataset.unavailable;
+    } catch (error) {
+      console.error('Unable to initialize the stroke preview:', error);
+      host.dataset.unavailable = 'true';
+      host.querySelector('.stroke-preview-fallback').textContent = '3D preview unavailable. Spin presets, swipe and angle controls still work.';
+    }
+    updateElevationUI();
+  }
   updateUI();
 }
 
@@ -798,6 +827,14 @@ for (const button of document.querySelectorAll('[data-spin-x]')) {
 }
 $('cue-elevation').addEventListener('input', (event) => {
   if (canChangeElevation()) setSelectedElevation(Number(event.target.value));
+});
+$('spin-elevation').addEventListener('input', (event) => {
+  if (canChangeSpin()) { spinControl.cancel();setSelectedElevation(Number(event.target.value)); }
+});
+for (const button of document.querySelectorAll('[data-stroke-view]')) button.addEventListener('click', () => {
+  spinControl.cancel();
+  spinView?.setView(button.dataset.strokeView);
+  for (const choice of document.querySelectorAll('[data-stroke-view]')) choice.setAttribute('aria-pressed', String(choice.dataset.strokeView === button.dataset.strokeView));
 });
 for (const button of document.querySelectorAll('[data-elevation]')) button.addEventListener('click', () => {
   if (canChangeElevation()) setSelectedElevation(Number(button.dataset.elevation));

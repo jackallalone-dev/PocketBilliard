@@ -135,7 +135,9 @@
       <span class="eyebrow">SET UP YOUR STROKE</span><h1 id="cue-angle-title">Cue-stick angle.</h1>
       <section class="elevation-control" aria-labelledby="elevation-title">
         <div class="elevation-heading"><label id="elevation-title" for="cue-elevation">Vertical cue angle</label><output id="elevation-value" for="cue-elevation">0°</output></div>
-        <svg class="elevation-profile" viewBox="0 0 260 150" role="img" aria-label="Side view: raising the back of the cue points its tip downward"><path d="M20 141H245" class="elevation-cloth"/><circle cx="201" cy="128" r="12" class="elevation-ball"/><g id="elevation-cue"><path d="M60 128H180" class="elevation-shaft"/><path d="M180 128H188" class="elevation-tip"/></g><path d="m224 118 12 10-12 10" class="elevation-direction"/></svg>
+        <div id="elevation-preview" class="stroke-preview" role="img" aria-label="3D close-up of the actual cue angle, contact point, and surrounding balls"><span class="stroke-preview-fallback">Restoring 3D preview…</span></div>
+        <div class="stroke-views" role="group" aria-label="3D camera view"><button data-stroke-view="contact" aria-pressed="true">Contact</button><button data-stroke-view="side" aria-pressed="false">Side</button><button data-stroke-view="clearance" aria-pressed="false">Clearance</button></div>
+        <p class="stroke-legend"><span>● Reachable area</span><span>● Tip contact</span><span>– Ball equator</span></p>
         <input id="cue-elevation" type="range" min="0" max="75" step="1" value="0" aria-describedby="elevation-clearance elevation-help" />
         <div class="elevation-scale"><span>Minimum clearance</span><span>75° steep</span></div>
         <div class="spin-presets elevation-presets"><button data-elevation="0">Auto clearance</button><button data-elevation="75">Steepest</button></div>
@@ -149,11 +151,17 @@
     <dialog id="spin-dialog" class="modal spin-modal" aria-labelledby="spin-title">
       <button class="modal-close icon-button" data-close="spin-dialog" aria-label="Close cue-ball spin controls">×</button>
       <span class="eyebrow">CHOOSE YOUR CONTACT POINT</span><h1 id="spin-title">Cue-ball spin.</h1>
-      <p class="modal-intro">View from behind the cue. Swipe anywhere on the ball to move the dot by your swipe distance. Touching alone does not reposition it.</p>
-      <div class="spin-selector"><span class="spin-top">FOLLOW</span><span class="spin-left">LEFT</span><span class="spin-right">RIGHT</span><span class="spin-bottom">DRAW</span><div id="spin-pad" class="spin-pad" role="group" tabindex="0" aria-label="Cue-ball contact point" aria-describedby="spin-help"><span class="spin-safe-ring" aria-hidden="true"></span><span class="spin-crosshair" aria-hidden="true"></span><span class="spin-marker" aria-hidden="true"></span></div></div>
+      <p class="modal-intro">Face-on to the white ball, with the cue hidden for a clear view. The red dot is your contact point; the green area is reachable at this cue angle.</p>
+      <div id="spin-pad" class="stroke-preview" role="group" tabindex="0" aria-label="3D cue-ball contact point" aria-describedby="spin-help spin-contact-height spin-clearance"><span class="stroke-preview-fallback">Restoring 3D preview…</span><span class="stroke-swipe-hint" aria-hidden="true">SWIPE TO ADJUST SPIN ↕ ↔</span></div>
+      <div class="stroke-views" role="group" aria-label="3D camera view"><button data-stroke-view="contact" aria-pressed="true">Contact</button><button data-stroke-view="side" aria-pressed="false">Side</button><button data-stroke-view="clearance" aria-pressed="false">Clearance</button></div>
+      <p class="stroke-legend"><span>● Reachable area</span><span>● Tip contact</span><span>– Ball equator</span></p>
       <output id="spin-value" class="spin-value" aria-live="polite">Center ball</output>
+      <p id="spin-contact-height" class="rules-note" aria-live="polite"></p>
       <div class="spin-presets" role="group" aria-label="Spin presets"><button data-spin-x="0" data-spin-y="0">Center</button><button data-spin-x="0" data-spin-y="-1">Draw ↓</button><button data-spin-x="0" data-spin-y="1">Follow ↑</button><button data-spin-x="-1" data-spin-y="0">Left ←</button><button data-spin-x="1" data-spin-y="0">Right →</button></div>
-      <p id="spin-help" class="rules-note">Swipe down for draw, up for follow, or sideways for sidespin. With an elevated cue, left/right contact also curves the ball toward that side once it grips the cloth. A level cue’s sidespin changes cushion rebounds without bending the free path. Arrow keys adjust the dot; Home centers it.</p>
+      <div class="elevation-heading"><label for="spin-elevation">Cue-stick angle</label><output id="spin-elevation-value" for="spin-elevation">0°</output></div>
+      <input id="spin-elevation" type="range" min="0" max="75" step="1" value="0" aria-describedby="spin-clearance" />
+      <p id="spin-clearance" class="rules-note" aria-live="polite"></p>
+      <p id="spin-help" class="rules-note">Swipe anywhere in the view: down for draw, up for follow, sideways for sidespin. Touching alone does not move the dot. Spin offsets are relative to the cue: raising it rotates the reachable area upward, so even draw can contact the upper surface. Side view shows the real height; Clearance shows nearby balls. Arrow keys adjust; Home centers.</p>
       <button class="primary-button" data-close="spin-dialog">Set spin <span>↗</span></button>
     </dialog>
     <dialog id="settings-dialog" class="modal small-modal" aria-labelledby="settings-title">

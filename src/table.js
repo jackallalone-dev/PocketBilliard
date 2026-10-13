@@ -34,17 +34,29 @@ function feltTexture() {
 
 function ballTexture(id) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 256;
+  canvas.width = id === 0 ? 1024 : 512;canvas.height = canvas.width / 2;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = id > 8 ? '#f8f4e7' : BALL_COLORS[id];
-  ctx.fillRect(0, 0, 512, 256);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   if (id === 0) {
-    ctx.fillStyle = '#cf2925';ctx.strokeStyle = '#952c27';ctx.lineWidth = 1.5;
-    // Larger measles-style spots, including a face-up spot in the initial pose.
-    // The duplicate at the UV seam keeps that spot continuous as the ball spins.
-    for (const [x, y] of [[128, 128], [384, 128], [0, 128], [512, 128], [256, 128], [128, 32], [384, 224]]) {
-      ctx.beginPath();ctx.arc(x, y, 12, 0, Math.PI * 2);ctx.fill();ctx.stroke();
+    // Six equal spherical discs. Drawing flat circles in an equirectangular
+    // texture pinches the spots near the poles and splits them at the seam.
+    const { width, height } = canvas;
+    const image = ctx.getImageData(0, 0, width, height);
+    const radius = 0.115, feather = Math.PI / height;
+    for (let y = 0; y < height; y++) {
+      const latitude = (y + 0.5) / height * Math.PI;
+      const ring = Math.sin(latitude), vertical = Math.abs(Math.cos(latitude));
+      for (let x = 0; x < width; x++) {
+        const longitude = (x + 0.5) / width * Math.PI * 2;
+        const nearest = Math.max(vertical, Math.abs(ring * Math.cos(longitude)), Math.abs(ring * Math.sin(longitude)));
+        const coverage = Math.max(0, Math.min(1, (radius - Math.acos(Math.min(1, nearest))) / feather + 0.5));
+        if (!coverage) continue;
+        const offset = (y * width + x) * 4;
+        for (const [channel, color] of [190, 38, 35].entries()) image.data[offset + channel] = Math.round(image.data[offset + channel] * (1 - coverage) + color * coverage);
+      }
     }
+    ctx.putImageData(image, 0, 0);
   }
   if (id > 8) {
     ctx.fillStyle = BALL_COLORS[id];
@@ -271,7 +283,7 @@ export class TableView {
     }
     this.ballMeshes.clear();this.falling.clear();
     for (const ball of balls) {
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(TABLE.radius, 32, 24), new THREE.MeshPhysicalMaterial({
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(TABLE.radius, ball.id === 0 ? 64 : 32, ball.id === 0 ? 48 : 24), new THREE.MeshPhysicalMaterial({
         map: ballTexture(ball.id), roughness: 0.28, metalness: 0,
         clearcoat: 0.65, clearcoatRoughness: 0.2,
       }));

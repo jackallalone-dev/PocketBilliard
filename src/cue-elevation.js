@@ -22,6 +22,17 @@ export function cuePose(cue, angle, power, spin = {}, elevation = 0) {
   };
 }
 
+// Actual point on the sphere, rather than the 2D offset perpendicular to the
+// cue. Raising the butt rotates the reachable contact cap toward the top.
+export function cueContact(cue, angle, spin = {}, elevation = 0) {
+  const pose = cuePose(cue, angle, 0, spin, elevation);
+  return {
+    x: pose.x + pose.back.x * TABLE.radius,
+    y: pose.y + pose.back.y * TABLE.radius,
+    z: pose.z + pose.back.z * TABLE.radius,
+  };
+}
+
 export function cueObstruction(balls, angle, spin, elevation) {
   const pose = cuePose(balls[0], angle, 0, spin, elevation);
   for (const ball of balls) {
