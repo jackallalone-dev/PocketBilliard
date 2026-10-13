@@ -18,6 +18,14 @@ Open **http://localhost:5173**. To play on a phone, connect it to the same Wi-Fi
 
 Run the commands above inside your Debian session and leave the server running. On that same Android phone, open `http://localhost:5173` in Chrome or Firefox. No desktop environment is needed. If Node.js is not installed, install a compatible version inside Debian first; the project requires Node.js 20.19+.
 
+## GitHub Pages
+
+The site is published at **https://jackallalone-dev.github.io/PocketBilliard/**.
+
+In repository **Settings → Pages**, set **Source** to **GitHub Actions**. The `Deploy to GitHub Pages` workflow installs dependencies, runs tests, builds with Vite, and deploys `dist/` on every push to `master`. It can also be started manually from the Actions tab.
+
+Vite uses relative asset URLs so JavaScript and CSS load correctly under the repository subpath. Publish the built `dist/` output; the source `index.html` depends on Vite and cannot run directly on a static host.
+
 ## Play
 
 The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, or **Playground**. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. Each mode keeps its own table and match state while the page remains open, including a shot paused in motion. Reloading the page starts a fresh session.
