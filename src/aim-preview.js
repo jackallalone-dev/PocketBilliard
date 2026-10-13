@@ -1,4 +1,5 @@
-import { TABLE, POCKETS, boundaryDistance } from './table-geometry.js';
+import { TABLE, POCKETS } from './table-geometry.js';
+import { boundaryDistance } from './rail-geometry.js';
 import { advanceBall, ballContactFriction, REST_MOTION, REST_ORIENTATION } from './ball-motion.js';
 import { strikeMotion } from './spin.js';
 

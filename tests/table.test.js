@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { PoolPhysics, POCKETS, TABLE } from '../src/physics.js';
-import { boundaryDistance } from '../src/table-geometry.js';
+import { boundaryDistance, CUSHION_FACES } from '../src/rail-geometry.js';
 import { TableView } from '../src/table.js';
 
 const movingBall = (x, z, vx, vz) => ({ id: 0, x, z, vx, vz, pocketed: false });
@@ -22,7 +22,7 @@ test('balls roll through each open mouth into the recessed pocket without an inv
 test('a shot grazing a side-pocket cushion tip rebounds instead of passing through it', () => {
   const events = [];
   const physics = new PoolPhysics((event) => events.push(event));
-  physics.balls = [movingBall(3.7, 0.43, 4, 0)];
+  physics.balls = [movingBall(3.7, 0.38, 4, 0)];
   for (let i = 0; i < 100 && !events.length; i++) physics.step(1 / 240);
   assert.equal(events[0]?.type, 'rail');
   assert.equal(physics.cue.pocketed, false);
@@ -72,9 +72,21 @@ test('the actual 3D meshes leave the cloth and recessed pocket holes unobstructe
       return hit;
     };
     const heightAt = (x, z) => surfaceAt(x, z).point.y;
-    assert.ok(Math.abs(heightAt(0, 0) - 0.025) < 0.001, 'wood must not cover the playing surface');
+    assert.ok(Math.abs(heightAt(0, 0) - TABLE.clothHeight) < 0.001, 'wood must not cover the playing surface');
     assert.ok(heightAt(4.4, 3) > 0.17, 'the cushion must have a raised, sloping top');
     assert.ok(heightAt(4.85, 3) > 0.1, 'the wooden frame still surrounds the table');
+    for (const x of [TABLE.width / 2 + TABLE.cushionDepth + 0.001, TABLE.frameWidth / 2 - 0.001]) {
+      assert.ok(Math.abs(heightAt(x, 3) - TABLE.clothHeight - TABLE.railTopHeight) < 1e-6, 'the full specified cap width must be flat');
+    }
+    assert.ok(heightAt(TABLE.frameWidth / 2 + 0.001, 3) < TABLE.clothHeight, 'the flat cap must end at its physical outer edge');
+    for (const faces of CUSHION_FACES) {
+      const face = faces.find((face) => face.normal.y > 0.5);
+      const point = face.triangle.getMidpoint(new THREE.Vector3());
+      const hit = surfaceAt(point.x, point.z);
+      assert.equal(hit.object.name, 'cushion');
+      assert.ok(Math.abs(hit.point.y - point.y - TABLE.clothHeight) < 1e-6, 'rendered slope must match the collision slope');
+      assert.ok(hit.face.normal.dot(face.normal) > 0.999999);
+    }
     for (const p of POCKETS) {
       assert.ok(heightAt(p.x, p.z) < -0.1, 'pockets must be real openings down to a recessed well');
     }

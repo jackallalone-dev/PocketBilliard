@@ -1,6 +1,7 @@
 import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
 import { REST_MOTION, REST_ORIENTATION } from './ball-motion.js';
 import { clampSpin, clampElevation } from './spin.js';
+import { normalizeSetup } from './saved-setups.js';
 
 const MARGIN = 0.008;
 const SEPARATION = TABLE.radius * 2 + MARGIN;
@@ -113,5 +114,28 @@ export class Playground {
     for (let i = 0; i < this.balls.length; i++) Object.assign(this.balls[i], this.setup[i], REST_MOTION);
     if (this.selected.pocketed) this.selectedId = 0;
     return this.setupAngle;
+  }
+
+  snapshot(angle, spin = {}, elevation = 0) {
+    const retry = !this.editing && this.attempts > 0;
+    return {
+      balls: copyBalls(retry ? this.setup : this.balls),
+      angle: retry ? this.setupAngle : angle,
+      spin: { ...(retry ? this.setupSpin : clampSpin(spin)) },
+      elevation: retry ? this.setupElevation : clampElevation(elevation),
+    };
+  }
+
+  loadSetup(value) {
+    const setup = normalizeSetup(value);
+    if (!setup) return false;
+    this.setup = setup.balls;
+    this.setupAngle = setup.angle;
+    this.setupSpin = setup.spin;
+    this.setupElevation = setup.elevation;
+    this.selectedId = 0;
+    this.attempts = 0;
+    this.restore();
+    return true;
   }
 }

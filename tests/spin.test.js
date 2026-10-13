@@ -11,12 +11,13 @@ import { ControlElement } from './helpers/control-element.js';
 
 const energy = (ball) => 0.5 * (ball.vx ** 2 + ball.vz ** 2) + 0.2 * TABLE.radius ** 2 * ((ball.wx || 0) ** 2 + (ball.wy || 0) ** 2 + (ball.wz || 0) ** 2);
 
-test('off-center strikes share a fixed shot energy budget between travel and rotation', () => {
+test('off-center strikes transfer less energy than centered strikes at the same cue speed', () => {
+  let centerEnergy;
   for (const spin of [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 }, { x: 1, y: 0 }, { x: 1, y: 1 }]) {
     const physics = new PoolPhysics();
     physics.shoot(0.7, 0.65, spin);
-    const expected = 0.5 * (3 + 22 * 0.65) ** 2;
-    assert.ok(Math.abs(energy(physics.cue) - expected) < 1e-8);
+    if (spin.x === 0 && spin.y === 0) centerEnergy = energy(physics.cue);
+    else assert.ok(energy(physics.cue) < centerEnergy);
   }
   assert.deepEqual(clampSpin({ x: NaN, y: Infinity }), { x: 0, y: 0 });
   assert.ok(Math.abs(Math.hypot(...Object.values(clampSpin({ x: 4, y: -3 }))) - 1) < 1e-10);

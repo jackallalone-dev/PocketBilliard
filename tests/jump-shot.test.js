@@ -51,10 +51,10 @@ test('manual elevation and power change takeoff while retaining a bounded energy
   assert.equal(flat.vy, 0);assert.ok(shallow.vy > 0 && steep.vy > shallow.vy);
   assert.ok(Math.abs(steep.vz) < Math.abs(shallow.vz));
   assert.ok(strikeMotion(0, 0.4, {}, 65).vy < steep.vy);
-  for (const elevation of [0, 1, 25, 65, 75]) for (const spin of [{}, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 1 }]) {
+  for (const elevation of [0, 1, 25, 65, 75, 89, 90]) for (const spin of [{}, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 1 }]) {
     assert.ok(energy(strikeMotion(0.6, 2, spin, elevation)) <= 0.5 * 47 ** 2 + 1e-8);
   }
-  assert.equal(clampElevation(NaN), 0);assert.equal(clampElevation(-20), 0);assert.equal(clampElevation(90), 75);
+  assert.equal(clampElevation(NaN), 0);assert.equal(clampElevation(-20), 0);assert.equal(clampElevation(90), 90);assert.equal(clampElevation(120), 90);
 });
 
 test('flight follows gravity without cloth friction until landing, then dissipates and settles', () => {
@@ -111,7 +111,7 @@ test('a purely vertical flight remains moving and landing cannot leave residual 
 });
 
 test('boosted steep and shallow jumps with spin remain finite and settle or leave the table', () => {
-  for (const elevation of [10, 35, 60, 75]) {
+  for (const elevation of [10, 35, 60, 75, 89, 90]) {
     const physics = new PoolPhysics();physics.shoot(0, 2, { x: 0.7, y: -0.5 }, elevation);
     for (let i = 0; i < 12000 && physics.moving; i++) physics.step(1 / 240);
     assert.equal(physics.moving, false);

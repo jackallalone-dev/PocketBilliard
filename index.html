@@ -53,7 +53,7 @@
         <section class="playground-bar" aria-label="Playground controls">
           <span class="playground-title">PLAYGROUND <span id="playground-attempt">TRY 01</span></span>
           <div class="playground-tabs" role="group" aria-label="Playground phase"><button id="pg-arrange" aria-pressed="true">Arrange</button><button id="pg-shoot" aria-pressed="false">Shoot</button></div>
-          <div class="playground-actions"><button id="pg-balls">＋ Balls</button><button id="pg-remove">Remove</button><button id="pg-clear">Clear</button><button id="pg-retry" class="retry-button">↶ Retry setup</button></div>
+          <div class="playground-actions"><button id="pg-balls">＋ Balls</button><button id="pg-remove">Remove</button><button id="pg-clear">Clear</button><button id="pg-setups">Save setup</button><button id="pg-retry" class="retry-button">↶ Retry setup</button></div>
         </section>
 
         <div class="table-info">
@@ -119,9 +119,9 @@
       <div class="rules-note">Rules source: <a href="https://upatour.com/8-ball-rules/" target="_blank" rel="noopener noreferrer">UPA Official 8-Ball Rules</a>. This digital version requires an explicit call for every non-break shot. The first breaker is selected instead of a physical lag; subsequent racks default to alternating breaks. The pro-only three-foul loss rule, optional referee shot clock, and physical conduct/equipment rules are not enabled. See README.md for the implementation details.</div>
       <div class="rules-note"><strong>9-ball:</strong> hit the lowest numbered ball first. A legal 9-ball pocket wins, including on the break or in a combination. No pockets need to be called. A legal break pockets a ball or sends three object balls to rails. Fouls give ball in hand anywhere; an illegally pocketed or off-table 9 is re-spotted.</div>
       <div class="rules-note"><strong>Push-out:</strong> only on the shot immediately after a legal break, declare Push before shooting. A push needs no object contact or rail, but scratches and other fouls still count. A pushed 9 is re-spotted. The opponent chooses to take the next shot or pass it back. Three consecutive fouls lose in 9-ball only if the second-foul warning was given; the warning dialog lets the opponent acknowledge it. Source: <a href="https://upatour.com/9-ball-rules/" target="_blank" rel="noopener noreferrer">UPA Official 9-Ball Rules</a>.</div>
-      <div class="rules-note"><strong>Playground:</strong> choose Playground from the main menu. In Arrange, drag a ball or its offset handle, or use ＋ Balls to select a ball to place. Switch to Shoot to practice without turns or 8-ball penalties. Retry setup restores your saved arrangement. Open the menu by tapping the Pocket Club logo.</div>
+      <div class="rules-note"><strong>Playground:</strong> choose Playground from the main menu. In Arrange, drag a ball or its offset handle, or use ＋ Balls to select a ball to place. Switch to Shoot to practice without turns or 8-ball penalties. Retry setup restores your practice arrangement. Save setup is available in both phases, with five named slots to save, load, replace, or delete. These slots stay in this browser after reloading. Open the menu by tapping the Pocket Club logo.</div>
       <div class="rules-note"><strong>Cue-ball spin:</strong> tap SPIN above the power control. Hit below center for draw, above center for follow, or left/right for sidespin. Draw needs backspin remaining when the cue ball hits another ball; longer distances and softer shots wear it off.</div>
-      <div class="rules-note"><strong>Cue elevation / jump shots:</strong> open ANGLE and move the Vertical cue angle slider. Raise the cue butt up to 75°; the minimum is calculated from the actual height and distance of balls blocking the stick. Auto clearance selects that minimum. Angle and power determine jump height and reach. The amber guide estimates the first landing or collision (65% power while idle). A jump can clear a blocker, clip it, or leave the table; normal match fouls still apply.</div>
+      <div class="rules-note"><strong>Cue elevation / jump shots:</strong> open ANGLE and move the Vertical cue angle slider. Raise the cue butt up to 90° (vertical); the minimum is calculated from the actual height and distance of balls blocking the stick. Auto clearance selects that minimum. Angle, contact point, and power determine spin, hop height, and reach. The amber jump guide or violet swerve/massé guide follows the simulated shot (65% power while idle). Balls can land and roll on the rail, return to the cloth, or fall into a pocket. Leaving the outer edge or stopping on top of the rail is out of bounds; normal match fouls still apply.</div>
       <button class="primary-button" data-close="help-dialog">Let’s play <span>↗</span></button>
     </dialog>
     <dialog id="balls-dialog" class="modal small-modal" aria-labelledby="balls-title">
@@ -138,12 +138,12 @@
         <div id="elevation-preview" class="stroke-preview" role="img" aria-label="3D close-up of the actual cue angle, contact point, and surrounding balls"><span class="stroke-preview-fallback">Restoring 3D preview…</span></div>
         <div class="stroke-views" role="group" aria-label="3D camera view"><button data-stroke-view="contact" aria-pressed="true">Contact</button><button data-stroke-view="side" aria-pressed="false">Side</button><button data-stroke-view="clearance" aria-pressed="false">Clearance</button></div>
         <p class="stroke-legend"><span>● Reachable area</span><span>● Tip contact</span><span>– Ball equator</span></p>
-        <input id="cue-elevation" type="range" min="0" max="75" step="1" value="0" aria-describedby="elevation-clearance elevation-help" />
-        <div class="elevation-scale"><span>Minimum clearance</span><span>75° steep</span></div>
-        <div class="spin-presets elevation-presets"><button data-elevation="0">Auto clearance</button><button data-elevation="75">Steepest</button></div>
+        <input id="cue-elevation" type="range" min="0" max="90" step="1" value="0" aria-describedby="elevation-clearance elevation-help" />
+        <div class="elevation-scale"><span>Minimum clearance</span><span>90° vertical</span></div>
+        <div class="spin-presets elevation-presets"><button data-elevation="0">Auto clearance</button><button data-elevation="90">Vertical</button></div>
         <p id="elevation-clearance" class="rules-note" aria-live="polite">Cue is clear.</p>
         <output id="shot-effect" class="shot-effect" aria-live="polite">Level stroke · 65% preview</output>
-        <p id="elevation-help" class="rules-note">Slide to raise the cue butt manually. The minimum follows nearby balls’ height and distance. Center contact with elevation and a firm stroke produces a jump. Move the contact dot left/right with elevation for swerve or massé; a softer stroke bends sooner. A shot can hop, then curve after landing.</p>
+        <p id="elevation-help" class="rules-note">Slide to raise the cue butt manually. The minimum follows nearby balls’ height and distance. Center contact with elevation and a firm stroke produces a jump. Move the contact dot left/right with elevation for swerve or massé; softer strokes make smaller hops and begin bending over a shorter distance. Curving comes from contact with the cloth, not from flight. At 90°, centered contact hops in place; off-center spin can move the ball sideways.</p>
         <p class="rules-note">Amber predicts an elevated center-axis path; violet predicts a curve. The amber ring marks the first landing. Predictions continue after landing toward the first collision, up to a limited distance/time, using selected power (65% while idle).</p>
       </section>
       <button class="primary-button" data-close="elevation-dialog">Set angle <span>↗</span></button>
@@ -159,10 +159,19 @@
       <p id="spin-contact-height" class="rules-note" aria-live="polite"></p>
       <div class="spin-presets" role="group" aria-label="Spin presets"><button data-spin-x="0" data-spin-y="0">Center</button><button data-spin-x="0" data-spin-y="-1">Draw ↓</button><button data-spin-x="0" data-spin-y="1">Follow ↑</button><button data-spin-x="-1" data-spin-y="0">Left ←</button><button data-spin-x="1" data-spin-y="0">Right →</button></div>
       <div class="elevation-heading"><label for="spin-elevation">Cue-stick angle</label><output id="spin-elevation-value" for="spin-elevation">0°</output></div>
-      <input id="spin-elevation" type="range" min="0" max="75" step="1" value="0" aria-describedby="spin-clearance" />
+      <input id="spin-elevation" type="range" min="0" max="90" step="1" value="0" aria-describedby="spin-clearance" />
       <p id="spin-clearance" class="rules-note" aria-live="polite"></p>
       <p id="spin-help" class="rules-note">Swipe anywhere in the view: down for draw, up for follow, sideways for sidespin. Touching alone does not move the dot. Spin offsets are relative to the cue: raising it rotates the reachable area upward, so even draw can contact the upper surface. Side view shows the real height; Clearance shows nearby balls. Arrow keys adjust; Home centers.</p>
       <button class="primary-button" data-close="spin-dialog">Set spin <span>↗</span></button>
+    </dialog>
+    <dialog id="setups-dialog" class="modal setups-modal" aria-labelledby="setups-title" aria-describedby="setups-description">
+      <button class="modal-close icon-button" data-close="setups-dialog" aria-label="Close saved setups">×</button>
+      <span class="eyebrow">PLAYGROUND · FIVE SLOTS</span><h1 id="setups-title">Saved setups.</h1>
+      <p id="setups-description" class="modal-intro">Save, load, or delete setups on this browser. Loading keeps you in Arrange or Shoot.</p>
+      <p id="setups-source" class="rules-note"></p>
+      <p id="setups-status" class="rules-note" role="status" aria-live="polite"></p>
+      <div id="setup-slots" class="setup-slots"></div>
+      <button class="primary-button" data-close="setups-dialog">Back to the table <span>↗</span></button>
     </dialog>
     <dialog id="settings-dialog" class="modal small-modal" aria-labelledby="settings-title">
       <button class="modal-close icon-button" data-close="settings-dialog" aria-label="Close settings">×</button>

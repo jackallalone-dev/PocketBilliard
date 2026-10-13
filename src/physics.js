@@ -1,5 +1,6 @@
-import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
-import { REST_MOTION, REST_ORIENTATION, advanceBall, hasBallMotion, cushionImpulse, ballContactFriction } from './ball-motion.js';
+import { TABLE, POCKETS } from './table-geometry.js';
+import { REST_MOTION, REST_ORIENTATION, hasBallMotion, ballContactFriction } from './ball-motion.js';
+import { advanceTableBall, restingOnRail } from './rail-motion.js';
 import { strikeMotion } from './spin.js';
 export { TABLE, POCKETS } from './table-geometry.js';
 export { EightBallGame, groupOf } from './match-rules.js';
@@ -66,7 +67,7 @@ export class PoolPhysics {
     const maxSpeed = this.balls.reduce((speed, ball) => ball.pocketed ? speed : Math.max(speed, Math.hypot(ball.vx, ball.vy || 0, ball.vz)), 0);
     // Keep travel below a ball radius even for boosted shots. This prevents
     // skipping ball contacts or crossing a cushion nose between solver steps.
-    const steps = Math.max(1, Math.ceil(maxSpeed * dt / (TABLE.radius * 0.75)));
+    const steps = Math.max(1, Math.ceil(maxSpeed * dt / (TABLE.radius * 0.25)), Math.ceil(dt * 240));
     for (let i = 0; i < steps; i++) {
       beforeStep?.(this.balls);
       this.integrateStep(dt / steps);
@@ -78,33 +79,14 @@ export class PoolPhysics {
     const r = TABLE.radius;
     for (const b of this.balls) {
       if (b.pocketed) continue;
-      const wasAirborne = (b.y || 0) > 0 || (b.vy || 0) > 0;
-      advanceBall(b, dt);
-      const pocket = b.y < r * 0.5 && POCKETS.find((p) => Math.hypot(b.x - p.x, b.z - p.z) < p.captureRadius);
+      advanceTableBall(b, dt, (rail, speed) => this.onEvent({ type: 'rail', id: b.id, rail, speed, step: this.stepNumber }));
+      const pocket = b.y < r * 0.5 && POCKETS.find((p) => Math.hypot(b.x - p.x, b.z - p.z) < p.captureRadius ||
+        (b.y < -r * 0.1 && Math.hypot(b.x - p.x, b.z - p.z) < p.radius));
       if (pocket) { this.pocket(b, pocket); continue; }
-      // A ball whose bottom clears the cushion top can fly over it. Once it
-      // leaves the playing area it is off-table, even if it lands on the rail.
-      if ((wasAirborne || b.y > 0) && (Math.abs(b.x) > TABLE.width / 2 + r || Math.abs(b.z) > TABLE.length / 2 + r)) {
-        this.removeOffTable(b);continue;
-      }
-      for (const [rail, segment] of CUSHION_SEGMENTS.entries()) {
-        if (b.y > 0.24) break;
-        const contact = closestPoint(segment, b.x, b.z);
-        const dx = b.x - contact.x, dz = b.z - contact.z;
-        const distance = Math.hypot(dx, dz);
-        if (distance >= r || distance < 1e-8) continue;
-        const nx = dx / distance, nz = dz / distance;
-        b.x += nx * (r - distance + 0.000001);
-        b.z += nz * (r - distance + 0.000001);
-        const incoming = b.vx * nx + b.vz * nz;
-        if (incoming < 0) {
-          this.onEvent({ type: 'rail', id: b.id, rail, speed: -incoming, step: this.stepNumber });
-          cushionImpulse(b, nx, nz, incoming);
-        }
-      }
-      if (Math.abs(b.x) > TABLE.width / 2 + 0.9 || Math.abs(b.z) > TABLE.length / 2 + 0.9) {
-        this.removeOffTable(b);
-      }
+      // Crossing the cushion nose is allowed. Only a real escape beyond the
+      // outer rail, falling below the table, or coming to rest on top is out.
+      if (Math.abs(b.x) > TABLE.frameWidth / 2 + r || Math.abs(b.z) > TABLE.frameLength / 2 + r || b.y < -r * 2) this.removeOffTable(b);
+      else if (restingOnRail(b)) this.removeOffTable(b, 'resting-on-rail');
     }
 
     // Two solver passes prevent a tightly packed rack from retaining overlaps.
@@ -142,10 +124,11 @@ export class PoolPhysics {
     }
   }
 
-  removeOffTable(ball) {
-    this.onEvent({ type: 'offTable', id: ball.id, step: this.stepNumber });
-    const nearest = POCKETS.reduce((a, p) => Math.hypot(p.x - ball.x, p.z - ball.z) < Math.hypot(a.x - ball.x, a.z - ball.z) ? p : a);
-    this.pocket(ball, nearest);
+  removeOffTable(ball, reason = 'left-table') {
+    if (ball.pocketed) return;
+    const motion = { x: ball.x, y: ball.y || 0, z: ball.z, vx: ball.vx, vy: ball.vy || 0, vz: ball.vz };
+    ball.pocketed = true;Object.assign(ball, REST_MOTION);
+    this.onEvent({ type: 'offTable', id: ball.id, reason, ...motion, step: this.stepNumber });
   }
 
   placeCue() {

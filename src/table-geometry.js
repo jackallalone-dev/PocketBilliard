@@ -1,16 +1,24 @@
-// One plan-view layout for the visible cushions, collisions, and shot guide.
+// Shared dimensions for the visible table, 3D contacts, and shot guide.
 // Coordinates are the cushion noses; the playing area keeps its 2:1 ratio.
 // A 100 × 50 inch tournament bed with 2.25 inch balls, in scene units.
+const INCH = 8.6 / 50;
 export const TABLE = Object.freeze({
   width: 8.6, length: 17.2, radius: 8.6 * 2.25 / 50 / 2,
-  cushionDepth: 0.3, headSpot: 4.3, footSpot: -4.3,
-  frameWidth: 10.23, frameLength: 18.83, frameCornerRadius: 0.55,
+  // WPA: 4–7.5 inch total rail, 1.875–2 inch covered cushion, nose at
+  // 63.5% of ball diameter. The 1.75 inch cap height is our selected profile,
+  // not a universal specification. It gives a ~9.4° cushion-top slope.
+  cushionDepth: 1.9375 * INCH, cushionNoseHeight: 2.25 * 0.635 * INCH,
+  railWidth: 6 * INCH, railTopHeight: 1.75 * INCH,
+  clothHeight: 0.028, headSpot: 4.3, footSpot: -4.3,
+  frameWidth: 8.6 + 12 * INCH, frameLength: 17.2 + 12 * INCH, frameCornerRadius: 0.55,
 });
 const X = TABLE.width / 2;
 const Z = TABLE.length / 2;
 const D = TABLE.cushionDepth;
-const cornerMouth = 0.54;
-const sideMouth = 0.48;
+const cornerMouth = 4.5 * INCH / Math.SQRT2;
+const sideMouth = 5 * INCH / 2;
+const cornerJaw = D / Math.tan(38 * Math.PI / 180); // 142° included angle.
+const sideJaw = D * Math.tan(14 * Math.PI / 180); // 104° included angle.
 
 export const POCKETS = [
   { x: -X - 0.14, z: -Z - 0.14, radius: 0.43, captureRadius: 0.34 },
@@ -28,15 +36,15 @@ for (const side of [-1, 1]) {
     CUSHIONS.push([
       { x: side * X, z: end * (Z - cornerMouth) },
       { x: side * X, z: end * sideMouth },
-      { x: side * (X + D), z: end * 0.35 },
-      { x: side * (X + D), z: end * (Z - cornerMouth + D) },
+      { x: side * (X + D), z: end * (sideMouth - sideJaw) },
+      { x: side * (X + D), z: end * (Z - cornerMouth + cornerJaw) },
     ]);
   }
   CUSHIONS.push([
     { x: -X + cornerMouth, z: side * Z },
     { x: X - cornerMouth, z: side * Z },
-    { x: X - cornerMouth + D, z: side * (Z + D) },
-    { x: -X + cornerMouth - D, z: side * (Z + D) },
+    { x: X - cornerMouth + cornerJaw, z: side * (Z + D) },
+    { x: -X + cornerMouth - cornerJaw, z: side * (Z + D) },
   ]);
 }
 
@@ -105,35 +113,4 @@ export function pocketSurroundPoints(pocket) {
     points.push({ x: bx, z: -0.64 });
   }
   return points.map((p) => ({ x: p.x * Math.sign(pocket.x), z: p.z * (Math.sign(pocket.z) || 1) }));
-}
-
-function rayCircle(x, z, dx, dz, cx, cz, radius) {
-  const ox = cx - x, oz = cz - z;
-  const along = ox * dx + oz * dz;
-  const perpendicularSq = ox * ox + oz * oz - along * along;
-  if (perpendicularSq > radius * radius) return Infinity;
-  const near = along - Math.sqrt(Math.max(0, radius * radius - perpendicularSq));
-  return near >= -1e-7 ? Math.max(0, near) : Infinity;
-}
-
-export function boundaryDistance(x, z, dx, dz) {
-  let nearest = Infinity;
-  for (const segment of CUSHION_SEGMENTS) {
-    const length = Math.sqrt(segment.lengthSq);
-    const nx = -segment.dz / length, nz = segment.dx / length;
-    const originNormal = (x - segment.a.x) * nx + (z - segment.a.z) * nz;
-    const velocityNormal = dx * nx + dz * nz;
-    for (const side of [-1, 1]) {
-      if (velocityNormal * side >= -1e-8) continue;
-      const distance = (side * TABLE.radius - originNormal) / velocityNormal;
-      if (distance < -1e-7) continue;
-      const along = ((x + dx * distance - segment.a.x) * segment.dx + (z + dz * distance - segment.a.z) * segment.dz) / segment.lengthSq;
-      if (along >= 0 && along <= 1) nearest = Math.min(nearest, Math.max(0, distance));
-    }
-    nearest = Math.min(nearest,
-      rayCircle(x, z, dx, dz, segment.a.x, segment.a.z, TABLE.radius),
-      rayCircle(x, z, dx, dz, segment.b.x, segment.b.z, TABLE.radius));
-  }
-  for (const p of POCKETS) nearest = Math.min(nearest, rayCircle(x, z, dx, dz, p.x, p.z, p.captureRadius));
-  return Number.isFinite(nearest) ? nearest : TABLE.length * 2;
 }

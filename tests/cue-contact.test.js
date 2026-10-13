@@ -10,7 +10,7 @@ test('3D contact stays on the sphere and on the rendered tip axis for every cue 
   const cue = { id: 0, x: 1.4, z: -2.3, y: 0.2 };
   const center = new THREE.Vector3(cue.x, TABLE.radius + 0.028 + cue.y, cue.z);
   for (const angle of [0, 0.7, Math.PI, -2.1]) {
-    for (const elevation of [0, 25, 65, 75]) {
+    for (const elevation of [0, 25, 65, 75, 89, 90]) {
       for (const spin of [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: 0.6, y: 0.8 }, { x: -1, y: 0 }]) {
         const contact = cueContact(cue, angle, spin, elevation);
         const point = new THREE.Vector3(contact.x, contact.y, contact.z);

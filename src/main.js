@@ -12,6 +12,7 @@ import { AimWheel, TableAimControl, normalizeAngle } from './aim-controls.js';
 import { controlDockLayout } from './control-layout.js';
 import { PocketHistory } from './pocket-history.js';
 import { Playground } from './playground.js';
+import { SavedSetups } from './saved-setups.js';
 import { BallPlacementControl } from './ball-placement.js';
 import { SpinControl } from './spin-control.js';
 import { SpinView } from './spin-view.js';
@@ -29,6 +30,7 @@ let game = matches.match;
 const audio = new GameAudio();
 const pocketHistory = new PocketHistory();
 const playground = new Playground();
+const savedSetups = new SavedSetups();
 const container = $('canvas-container');
 const aimingLabel = container.getAttribute('aria-label');
 const sessions = {};
@@ -70,6 +72,10 @@ const physics = new PoolPhysics((event) => {
       $('pocket-announcement').textContent = `Ball ${event.id} pocketed. ${pocketHistory.ids.length} balls down.`;
     } else if (event.id === 0) $('pocket-announcement').textContent = 'Cue ball pocketed. Scratch.';
     if (navigator.vibrate) navigator.vibrate(12);
+  } else if (event.type === 'offTable') {
+    shotBalls.push(event.id);view.offTable(event);
+    if (pocketHistory.record(event.id)) renderPocketHistory();
+    $('pocket-announcement').textContent = `${event.id === 0 ? 'Cue ball' : `Ball ${event.id}`} ${event.reason === 'resting-on-rail' ? 'stopped on the rail' : 'left the table'}.${event.id === 0 ? ' Scratch.' : ''}`;
   }
 });
 const cuePlacement = new CuePlacement(physics, game);
@@ -260,6 +266,7 @@ function updatePlaygroundUI() {
   $('pg-balls').disabled = $('pg-clear').disabled = !canEdit();
   $('pg-remove').disabled = !canEdit() || playground.selectedId === 0 || playground.selected.pocketed;
   $('pg-retry').disabled = !active || !canInteract();
+  $('pg-setups').disabled = !active || !canInteract();
   $('playground-attempt').textContent = `TRY ${String(playground.attempts + (inShot ? 0 : 1)).padStart(2, '0')}`;
   $('restart-button').title = active ? 'Restore trick-shot setup' : 'Start a new game';
   container.setAttribute('aria-label', canPlaceCue() ? 'Cue ball in hand. Drag the cue ball or its handle, then confirm the position. Object balls cannot be moved.' : active && playground.editing ? 'Arrange balls. Drag a ball or its move handle. Use the Balls palette to select a ball to add, then tap the cloth. Arrow keys nudge the selected ball.' : aimingLabel);
@@ -365,7 +372,59 @@ function setPlaygroundPhase(editing) {
   if (editing) playground.editing = true;
   else if (!playground.commit(angle, selectedSpin, selectedElevation)) return;
   clearPocketHistory();aimDirty = true;updateUI();
-  toast(editing ? 'Arrange your shot. Drag a ball or its handle.' : 'Setup saved. Aim, pull, and release.');
+  toast(editing ? 'Arrange your shot. Drag a ball or its handle.' : 'Ready to practice. Aim, pull, and release.');
+}
+
+function renderSavedSetups() {
+  $('setups-source').textContent = !playground.editing && playground.attempts > 0
+    ? 'Save keeps your original retry setup, including its aim, spin, and elevation. To save the current table instead, switch to Arrange.'
+    : 'Save keeps the current arrangement, aim, spin, and elevation without changing your mode.';
+  const list = $('setup-slots');
+  list.replaceChildren();
+  savedSetups.slots.forEach((slot, index) => {
+    const row = document.createElement('section');row.className = 'setup-slot';
+    const label = document.createElement('label');label.htmlFor = `setup-name-${index}`;
+    label.textContent = `Slot ${index + 1} · ${slot ? `${slot.setup.balls.filter((b) => !b.pocketed).length} balls` : 'Empty'}`;
+    const name = document.createElement('input');name.id = label.htmlFor;name.type = 'text';name.maxLength = 40;
+    name.value = slot?.name || '';name.placeholder = `Setup ${index + 1}`;name.autocomplete = 'off';
+    const actions = document.createElement('div');actions.className = 'setup-slot-actions';
+    for (const action of ['save', 'load', 'delete']) {
+      const button = document.createElement('button');button.type = 'button';
+      button.textContent = action === 'save' ? (slot ? 'Replace' : 'Save') : action === 'load' ? 'Load' : 'Delete';
+      button.setAttribute('aria-label', `${button.textContent} slot ${index + 1}`);
+      button.disabled = action !== 'save' && !slot;
+      button.addEventListener('click', () => {
+        if (mode !== 'playground' || menuOpen || contextLost || !$('setups-dialog').open) return;
+        if (action === 'load') {
+          const saved = savedSetups.get(index);
+          if (!saved || !playground.loadSetup(saved.setup)) return;
+          cancelGestures();
+          setAimAngle(playground.setupAngle);setSelectedSpin(playground.setupSpin);setSelectedElevation(playground.setupElevation);
+          inShot = false;shotBalls = [];settleTime = 0;
+          clearPocketHistory();view.resetBalls(physics.balls);
+          $('setups-dialog').close();updateUI();toast(`${saved.name} loaded.`);
+          return;
+        }
+        const result = action === 'save'
+          ? savedSetups.save(index, name.value, playground.snapshot(angle, selectedSpin, selectedElevation))
+          : savedSetups.delete(index);
+        if (!result.ok) { $('setups-status').textContent = 'This setup could not be saved. Try arranging the balls again.';return; }
+        const message = action === 'save' ? `${savedSetups.slots[index].name} saved.` : `Slot ${index + 1} deleted.`;
+        $('setups-status').textContent = result.persisted ? message : `${message} Only for this session: browser storage is unavailable.`;
+        renderSavedSetups();
+        $('setup-slots').children[index].querySelector('button').focus({ preventScroll: true });
+      });
+      actions.appendChild(button);
+    }
+    row.append(label, name, actions);list.appendChild(row);
+  });
+}
+
+function openSavedSetups() {
+  if (mode !== 'playground' || !canInteract()) return;
+  cancelGestures();
+  renderSavedSetups();$('setups-status').textContent = '';
+  openDialog('setups-dialog');
 }
 
 function restorePlayground() {
@@ -749,6 +808,7 @@ $('pg-shoot').addEventListener('click', () => setPlaygroundPhase(false));
 $('pg-balls').addEventListener('click', openBallPalette);
 $('pg-remove').addEventListener('click', removeSelectedBall);
 $('pg-retry').addEventListener('click', restorePlayground);
+$('pg-setups').addEventListener('click', openSavedSetups);
 $('pg-clear').addEventListener('click', () => {
   if (!canEdit()) return;
   cancelGestures();playground.clear();clearPocketHistory();aimDirty = true;updateUI();

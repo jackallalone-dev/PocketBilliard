@@ -1,4 +1,5 @@
-import { TABLE, POCKETS, CUSHION_SEGMENTS, closestPoint } from './table-geometry.js';
+import { TABLE, POCKETS } from './table-geometry.js';
+import { tableContacts } from './rail-geometry.js';
 import { clampElevation } from './spin.js';
 
 export const RULES_SOURCE = 'https://upatour.com/8-ball-rules/';
@@ -12,11 +13,10 @@ export class ShotTracker {
     this.firstContacts = new Set();this.firstStep = null;
     this.pockets = [];this.numberedRails = new Set();this.railAfterContact = false;this.pocketAfterContact = false;this.offTable = [];
     this.frozen = new Set();
-    for (const ball of this.start.filter((b) => !b.pocketed)) {
-      CUSHION_SEGMENTS.forEach((rail, index) => {
-        const p = closestPoint(rail, ball.x, ball.z);
-        if (Math.hypot(ball.x - p.x, ball.z - p.z) <= TABLE.radius + 0.002) this.frozen.add(`${ball.id}:${index}`);
-      });
+    for (const ball of balls.filter((b) => !b.pocketed)) {
+      for (const contact of tableContacts(ball, 0.002)) {
+        if (contact.face.rail !== null) this.frozen.add(`${ball.id}:${contact.face.rail}`);
+      }
     }
     const cue = balls[0], dx = Math.sin(angle), dz = -Math.cos(angle);
     const horizontal = Math.cos(clampElevation(elevation) * Math.PI / 180);
@@ -31,8 +31,7 @@ export class ShotTracker {
     for (const key of this.frozen) {
       const [id, index] = key.split(':').map(Number);
       const ball = balls.find((b) => b.id === id);
-      const p = closestPoint(CUSHION_SEGMENTS[index], ball.x, ball.z);
-      if (ball.pocketed || (ball.y || 0) > 0.24 || Math.hypot(ball.x - p.x, ball.z - p.z) > TABLE.radius + 0.004) this.frozen.delete(key);
+      if (ball.pocketed || !tableContacts(ball, 0.004).some((contact) => contact.face.rail === index)) this.frozen.delete(key);
     }
   }
 

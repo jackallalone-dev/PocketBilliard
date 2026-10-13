@@ -158,6 +158,9 @@ export class SpinView {
     // Keep the ball framed on narrow portrait screens too.
     distance /= Math.min(1, this.camera.aspect);
     this.camera.position.copy(target).addScaledVector(direction, distance);
+    // Cue-relative screen up stays perpendicular to the viewing axis, including
+    // a vertical cue, where world-up would make lookAt singular.
+    this.camera.up.copy(contactView ? back.clone().cross(right) : UP);
     this.camera.lookAt(target);this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
     this.renderer.render(this.scene, this.camera);

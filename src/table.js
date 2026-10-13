@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { TABLE, POCKETS, BALL_COLORS } from './physics.js';
-import { CUSHIONS, frameOpeningPoints, pocketSurroundPoints, boundaryDistance } from './table-geometry.js';
+import { CUSHIONS, pocketSurroundPoints } from './table-geometry.js';
+import { GRAVITY } from './ball-motion.js';
+import { BED_TOP, FRAME_TOP, FRAME_WALLS, CUSHION_FACES, surfacePositions, boundaryDistance } from './rail-geometry.js';
 import { clampElevation } from './spin.js';
 import { cuePose, CUE_START } from './cue-elevation.js';
 import { elevatedPreview } from './elevated-preview.js';
@@ -92,6 +94,13 @@ function planShape(points) {
   return new THREE.Shape(points.map((p) => new THREE.Vector2(p.x, -p.z)));
 }
 
+function surfaceGeometry(faces) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(surfacePositions(faces), 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export class TableView {
   constructor(container, { onLayout = () => {} } = {}) {
     this.container = container;
@@ -132,10 +141,9 @@ export class TableView {
     this.resize();
   }
 
-  roundedSlab(width, length, radius, depth, material, y, opening = false) {
+  roundedSlab(width, length, radius, depth, material, y) {
     const shape = roundedShape(width, length, radius);
-    if (opening) shape.holes.push(new THREE.Path(planShape(frameOpeningPoints()).getPoints()));
-    const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: opening ? 0.025 : 0.08, bevelThickness: 0.06, curveSegments: 10 });
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.08, bevelThickness: 0.06, curveSegments: 10 });
     geometry.rotateX(-Math.PI / 2);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.y = y;mesh.receiveShadow = true;
@@ -147,51 +155,38 @@ export class TableView {
     const wood = new THREE.MeshStandardMaterial({ color: 0x292e29, roughness: 0.5, metalness: 0.12 });
     const edge = new THREE.MeshStandardMaterial({ color: 0x14261d, roughness: 0.7 });
     const brass = new THREE.MeshStandardMaterial({ color: 0xa89363, roughness: 0.45, metalness: 0.65 });
-    this.roundedSlab(10.45, 19.05, 0.65, 0.36, edge, -0.7);
-    this.roundedSlab(10.3, 18.9, 0.58, 0.08, brass, -0.33);
-    this.roundedSlab(TABLE.frameWidth, TABLE.frameLength, TABLE.frameCornerRadius, 0.34, wood, -0.23, true);
+    this.roundedSlab(TABLE.frameWidth + 0.22, TABLE.frameLength + 0.22, 0.65, 0.36, edge, -0.7);
+    this.roundedSlab(TABLE.frameWidth + 0.07, TABLE.frameLength + 0.07, 0.58, 0.08, brass, -0.33);
+    const frame = new THREE.Mesh(surfaceGeometry([...FRAME_TOP, ...FRAME_WALLS]), wood);
+    frame.name = 'rail-cap';frame.castShadow = true;frame.receiveShadow = true;this.scene.add(frame);
     const castingMaterial = new THREE.MeshStandardMaterial({ color: 0xa7ac9e, roughness: 0.38, metalness: 0.65 });
     for (const p of POCKETS) {
       const casting = new THREE.Mesh(new THREE.ShapeGeometry(planShape(pocketSurroundPoints(p)), 32), castingMaterial);
       casting.name = 'pocket-surround';
       casting.rotation.x = -Math.PI / 2;
-      casting.position.y = 0.178;
+      casting.position.y = TABLE.clothHeight + TABLE.railTopHeight + 0.0005;
       casting.receiveShadow = true;
       this.scene.add(casting);
     }
 
     // The cloth continues underneath the cushion jaws and has actual pocket holes.
-    const bed = roundedShape(10.1, 18.7, 0.5);
-    for (const p of POCKETS) {
-      const hole = new THREE.Path();
-      hole.absarc(p.x, -p.z, p.radius, 0, Math.PI * 2, true);
-      bed.holes.push(hole);
-    }
-    const felt = new THREE.Mesh(new THREE.ShapeGeometry(bed, 36), new THREE.MeshStandardMaterial({ map: feltTexture(), roughness: 1 }));
-    // ShapeGeometry supplies world-space UVs; retain the original fabric scale.
-    const uv = felt.geometry.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / TABLE.width, uv.getY(i) / TABLE.length);
-    felt.rotation.x = -Math.PI / 2;felt.position.y = 0.025;felt.receiveShadow = true;this.scene.add(felt);
+    const felt = new THREE.Mesh(surfaceGeometry(BED_TOP), new THREE.MeshStandardMaterial({ map: feltTexture(), roughness: 1 }));
+    const positions = felt.geometry.attributes.position, uv = [];
+    for (let i = 0; i < positions.count; i++) uv.push(positions.getX(i) / TABLE.width, -positions.getZ(i) / TABLE.length);
+    felt.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    felt.name = 'cloth';felt.receiveShadow = true;this.scene.add(felt);
     const cushion = new THREE.MeshStandardMaterial({ color: 0x326c50, roughness: 0.95 });
     const seam = new THREE.LineBasicMaterial({ color: 0x143d2e, transparent: true, opacity: 0.6 });
-    for (const points of CUSHIONS) {
-      const geometry = new THREE.ExtrudeGeometry(planShape(points), { depth: 0.24, bevelEnabled: false });
-      geometry.rotateX(-Math.PI / 2);
-      const positions = geometry.attributes.position;
+    for (const [index, points] of CUSHIONS.entries()) {
+      const geometry = surfaceGeometry(CUSHION_FACES[index]);
       const a = points[0], b = points[1];
-      const length = Math.hypot(b.x - a.x, b.z - a.z);
-      for (let i = 0; i < positions.count; i++) {
-        const depth = Math.abs((positions.getX(i) - a.x) * (b.z - a.z) - (positions.getZ(i) - a.z) * (b.x - a.x)) / length;
-        positions.setY(i, positions.getY(i) > 0.1 ? 0.17 + Math.min(1, depth / TABLE.cushionDepth) * 0.07 : 0.018);
-      }
-      geometry.computeVertexNormals();
       const mesh = new THREE.Mesh(geometry, cushion);
-      mesh.castShadow = true;mesh.receiveShadow = true;this.scene.add(mesh);
+      mesh.name = 'cushion';mesh.castShadow = true;mesh.receiveShadow = true;this.scene.add(mesh);
       const edge = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(points[3].x, 0.242, points[3].z),
-        new THREE.Vector3(a.x, 0.172, a.z),
-        new THREE.Vector3(b.x, 0.172, b.z),
-        new THREE.Vector3(points[2].x, 0.242, points[2].z),
+        new THREE.Vector3(points[3].x, TABLE.clothHeight + TABLE.railTopHeight + 0.002, points[3].z),
+        new THREE.Vector3(a.x, TABLE.clothHeight + TABLE.cushionNoseHeight + 0.002, a.z),
+        new THREE.Vector3(b.x, TABLE.clothHeight + TABLE.cushionNoseHeight + 0.002, b.z),
+        new THREE.Vector3(points[2].x, TABLE.clothHeight + TABLE.railTopHeight + 0.002, points[2].z),
       ]), seam);
       this.scene.add(edge);
     }
@@ -207,12 +202,13 @@ export class TableView {
     }
     const diamondMaterial = new THREE.MeshStandardMaterial({ color: 0xb7b192, roughness: 0.45, metalness: 0.15 });
     const diamond = (x, z) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.025, 0.105), diamondMaterial);
-      mesh.position.set(x, 0.185, z);mesh.rotation.y = Math.PI / 4;this.scene.add(mesh);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.001, 0.105), diamondMaterial);
+      mesh.position.set(x, TABLE.clothHeight + TABLE.railTopHeight + 0.0005, z);mesh.rotation.y = Math.PI / 4;this.scene.add(mesh);
     };
     for (const side of [-1, 1]) {
-      for (const z of [-6.45, -4.3, -2.15, 2.15, 4.3, 6.45]) diamond(side * 4.82, z);
-      for (const x of [-2.15, 0, 2.15]) diamond(x, side * 9.13);
+      const sightOffset = 3.6875 * TABLE.width / 50;
+      for (const z of [-6.45, -4.3, -2.15, 2.15, 4.3, 6.45]) diamond(side * (TABLE.width / 2 + sightOffset), z);
+      for (const x of [-2.15, 0, 2.15]) diamond(x, side * (TABLE.length / 2 + sightOffset));
     }
 
     const markingMat = new THREE.LineBasicMaterial({ color: 0xb7d7b6, transparent: true, opacity: 0.12 });
@@ -294,7 +290,11 @@ export class TableView {
 
   pocket(id, pocket) {
     const mesh = this.ballMeshes.get(id);
-    this.falling.set(id, { time: 0, x: mesh.position.x, z: mesh.position.z, pocket });
+    this.falling.set(id, { time: 0, x: mesh.position.x, y: mesh.position.y, z: mesh.position.z, pocket });
+  }
+
+  offTable(event) {
+    this.falling.set(event.id, { ...event, y: TABLE.radius + TABLE.clothHeight + event.y, time: 0, offTable: true });
   }
 
   sync(balls, dt) {
@@ -307,8 +307,12 @@ export class TableView {
           changed = true;
           fall.time += dt;
           const t = Math.min(1, fall.time / 0.3);
-          mesh.position.set(THREE.MathUtils.lerp(fall.x, fall.pocket.x, t), TABLE.radius + 0.028 - 0.75 * t * t, THREE.MathUtils.lerp(fall.z, fall.pocket.z, t));
-          mesh.scale.setScalar(1 - t * 0.15);
+          if (fall.offTable) {
+            const elapsed = fall.time;
+            if (fall.reason === 'resting-on-rail') mesh.position.set(fall.x, fall.y, fall.z);
+            else mesh.position.set(fall.x + fall.vx * elapsed, fall.y + fall.vy * elapsed - GRAVITY / 2 * elapsed ** 2, fall.z + fall.vz * elapsed);
+          } else mesh.position.set(THREE.MathUtils.lerp(fall.x, fall.pocket.x, t), (fall.y ?? TABLE.radius + TABLE.clothHeight) - 0.75 * t * t, THREE.MathUtils.lerp(fall.z, fall.pocket.z, t));
+          mesh.scale.setScalar(fall.reason === 'resting-on-rail' ? 1 - t : 1 - t * 0.15);
           mesh.visible = t < 1;
         } else mesh.visible = false;
       } else {
@@ -356,7 +360,7 @@ export class TableView {
       end = points.at(-1);target = preview.target;
       this.ghost.visible = !!target && aids.contactCircle;
       if (preview.landing) {
-        this.landingGhost.position.set(preview.landing.x, 0.05, preview.landing.z);
+        this.landingGhost.position.set(preview.landing.x, TABLE.clothHeight + preview.landing.y + 0.02, preview.landing.z);
         this.landingGhost.visible = aids.contactCircle;
       }
     }
@@ -428,8 +432,8 @@ export class TableView {
   frameScreenBounds() {
     const rect = this.container.getBoundingClientRect();
     const points = [];
-    for (const x of [-5.3, 5.3]) {
-      for (const z of [-9.62, 9.62]) points.push(this.pointToScreen(new THREE.Vector3(x, 0, z)));
+    for (const x of [-1, 1].map((s) => s * (TABLE.frameWidth / 2 + 0.15))) {
+      for (const z of [-1, 1].map((s) => s * (TABLE.frameLength / 2 + 0.15))) points.push(this.pointToScreen(new THREE.Vector3(x, 0, z)));
     }
     const left = Math.min(...points.map((p) => p.x)) - rect.left;
     const right = Math.max(...points.map((p) => p.x)) - rect.left;
@@ -454,9 +458,9 @@ export class TableView {
 
     // Fit the full frame with a small margin instead of a fixed, zoomed-out view.
     const bounds = new THREE.Box3();
-    for (const x of [-5.3, 5.3]) {
+    for (const x of [-1, 1].map((s) => s * (TABLE.frameWidth / 2 + 0.15))) {
       for (const y of [-0.85, 0.5]) {
-        for (const z of [-9.62, 9.62]) {
+        for (const z of [-1, 1].map((s) => s * (TABLE.frameLength / 2 + 0.15))) {
           bounds.expandByPoint(new THREE.Vector3(x, y, z).applyMatrix4(this.camera.matrixWorldInverse));
         }
       }

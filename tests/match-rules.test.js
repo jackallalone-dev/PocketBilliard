@@ -138,7 +138,8 @@ test('amateur fouls do not trigger the pro-only three-foul loss, and stalemate r
 
 test('shot tracking ignores rails before first contact and initially frozen cushions until separation', () => {
   const physics = new PoolPhysics();physics.balls = physics.balls.filter((ball) => ball.id <= 1);
-  Object.assign(physics.cue, { x: 0, z: 0 });Object.assign(physics.balls[1], { x: TABLE.width / 2 - TABLE.radius, z: 3 });
+  const noseReach = Math.sqrt(TABLE.radius ** 2 - (TABLE.cushionNoseHeight - TABLE.radius) ** 2);
+  Object.assign(physics.cue, { x: 0, z: 0 });Object.assign(physics.balls[1], { x: TABLE.width / 2 - noseReach, z: 3 });
   const ball = physics.balls[1];
   const rail = CUSHION_SEGMENTS.findIndex((s) => { const p = closestPoint(s, ball.x, ball.z);return Math.hypot(ball.x - p.x, ball.z - p.z) <= TABLE.radius + 0.001; });
   const tracker = new ShotTracker(physics.balls);

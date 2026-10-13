@@ -28,7 +28,7 @@ Vite uses relative asset URLs so JavaScript and CSS load correctly under the rep
 
 ## Play
 
-The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, or **Playground**. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. Each mode keeps its own table and match state while the page remains open, including a shot paused in motion. Reloading the page starts a fresh session.
+The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, or **Playground**. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. Each mode keeps its own table and match state while the page remains open, including a shot paused in motion. Reloading the page starts a fresh session; Playground’s five saved setup slots remain available.
 
 - **Touch to aim:** a tap on the cloth aims at that point when you release. A swipe rotates your existing aim without snapping toward your finger on touch-down or release. The white dotted line shows the initial path, the gold line previews the first target ball, and the cyan line estimates the white ball’s short post-contact path, including draw/follow. The contact circle marks the impact position. The trajectory lines render above balls.
 - **Aiming aids:** Settings has independent switches for the initial guide, target-ball line, white-ball path, and contact circle. Choices are saved on this device when storage is available. The cue remains visible even with every aid off.
@@ -36,10 +36,10 @@ The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-b
 - **Fine-aim wheel:** drag the small wheel below the power control up/down for precise adjustments. Mouse scrolling and arrow keys also work on the wheel; Shift + arrow gives an even smaller step.
 - **Shoot:** pull down on the vertical power control beside the table, then release to shoot. Halfway is **100%**; the full pull reaches **200%**, with an orange boosted-power indicator above 100%. Tapping alone does not shoot. Arrow keys still adjust in 5% steps; End on the control selects 200%.
 - **Cue-ball spin:** tap **SPIN** above the power control for a **face-on 3D close-up** of the white ball. Contact view looks straight down the cue axis, hiding the stick and surrounding objects so the contact point is easy to see. Swipe anywhere in the view to adjust spin **relative to its current position**; merely touching it does not move the dot. Swipe down for draw/backspin, up for follow/topspin, and sideways for sidespin. Multiple swipes accumulate; presets and Home can center it. The red marker shows the real surface contact, green marks the reachable area, and the dashed gold line marks the ball’s equator. Raising the cue rotates that area upward—even full draw hits above the equator at steep angles. **ANGLE** opens in **Side** view with the stick visible; **Clearance** gives a wider side view of nearby balls. An amber ball and ghost cue show a blocked lower angle when automatic clearance raises the actual stick. The inline angle slider lets you watch the contact change while setting spin. Each time you open SPIN or ANGLE, its camera returns to the appropriate default.
-- **Vertical cue angle / jumps:** the separate **ANGLE** button opens a manual elevation slider. Raise the cue butt from the calculated minimum clearance up to **75°**. Nearby balls determine the minimum from their height, position, and distance from the shaft. **Auto clearance** uses the lowest clear angle; when the shaft is clear, that is **0°**. More elevation makes a steeper stroke, and power affects jump height and distance. See the jump-shot practice below.
+- **Vertical cue angle / jumps:** the separate **ANGLE** button opens a manual elevation slider. Raise the cue butt from the calculated minimum clearance up to **90° (vertical)**. Nearby balls determine the minimum from their height, position, and distance from the shaft. **Auto clearance** uses the lowest clear angle; when the shaft is clear, that is **0°**. Angle, tip contact, and power determine the motion. At 90°, a centered strike hops in place; an off-center strike gives spin that table friction can turn into lateral travel. See the jump-shot practice below.
 - **Cancel a shot:** return your finger to the starting height or move it sideways before releasing. Switching apps, opening a dialog, or rotating the screen cancels an unfinished pull too.
 - **Left/right controls:** open **Settings** in the header and choose the control side. The power control and aiming wheel dock directly beside the table’s outer rail on that side, in portrait or landscape. The selection is saved on this device when browser storage is available.
-- **Pocketed-ball list:** a slim vertical tray sits beside the table, opposite the shooting and fine-aim controls. It mirrors automatically when you change control sides and shows numbered balls in pocketing order as they drop. Scroll the tray on shorter screens to see every ball. Cue-ball scratches are announced separately. A new game clears the tray.
+- **Pocketed-ball list:** a slim vertical tray sits beside the table, opposite the shooting and fine-aim controls. It mirrors automatically when you change control sides and shows removed numbered balls in order, including balls driven off the table. Scroll the tray on shorter screens to see every ball. Cue-ball scratches and out-of-bounds balls are announced separately. A new game clears the tray.
 - **Desktop:** drag and release with a mouse, or use left/right arrows to aim, Shift + arrow for finer adjustments, up/down arrows for power, and Space to shoot while the table has focus. When the power control has focus, its arrow keys adjust power and Enter/Space fires; Escape cancels.
 - Tap the sound icon for optional synthesized shot sounds. Tap **?** for the rules, or the restart arrow to re-rack.
 
@@ -67,8 +67,9 @@ The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-b
 1. Choose **Playground** from the main menu. It starts with a cue ball and two object balls.
 2. In **Arrange**, drag a ball directly or drag its gold **move handle**. The handle sits away from the ball so your finger does not cover the placement. Balls stay inside the cushions and cannot overlap.
 3. Use **＋ Balls** to select any numbered ball. Tap empty cloth to add a selected off-table ball; selecting an existing ball reveals its handle. **Remove** deletes the selected object ball, and **Clear** leaves only the cue ball.
-4. Switch to **Shoot** to save the arrangement and practice using the normal aiming and power controls. Playground has no turns or early-8-ball penalties; a scratched cue ball returns to the table.
-5. **Retry setup** restores all balls and the first attempt’s aiming direction, spin, and manual cue elevation, even during an airborne shot. Switch back to Arrange to change the setup. Setup storage lasts for the current page session.
+4. Switch to **Shoot** to set the retry arrangement and practice using the normal aiming and power controls. Playground has no turns or early-8-ball penalties; a scratched cue ball returns to the table.
+5. **Retry setup** restores all balls and the first attempt’s aiming direction, spin, and manual cue elevation, even during an airborne shot. Switch back to Arrange to change the setup.
+6. **Save setup** opens **five named slots** from either Arrange or Shoot. Save into an empty slot, **Replace** an existing slot, **Load**, or **Delete**. Saves include ball positions, aim, spin, and manual elevation, and persist in this browser across reloads. Loading stays in your current phase and resets Retry to the loaded setup. After an attempt, saving keeps the original retry setup; switch to Arrange if you want to save the resulting table instead. If browser storage is unavailable, the panel reports that saves are session-only.
 
 On desktop, focus the table or move handle and use arrow keys to nudge the selected ball. Hold Shift for smaller nudges. Escape, opening a dialog/menu, or a cancelled touch reverts an unfinished drag.
 
@@ -79,7 +80,8 @@ On desktop, focus the table or move handle and use arrow keys to nudge the selec
 - **Sidespin:** left/right spin changes the outgoing angle at a cushion. Combine it with draw or follow by moving the contact point diagonally.
 - Backspin wears off with travel and can become natural forward roll. A soft, long-distance shot may therefore follow instead of drawing. Center-ball shots also acquire natural roll from the cloth.
 - Match shots reset spin to center and manual elevation to Auto clearance after settling. Playground retains the selections; Retry restores the first attempt’s spin and elevation.
-- The white guide previews initial contact. The cyan cue-ball path is only a short post-impact estimate for level shots: it stops at the next obstruction and does not simulate an entire multi-ball sequence. Ball rotation is simulated alongside sliding/rolling cloth friction, cushion friction, and small ball-contact friction. Massé/swerve, squirt, and miscues are not modeled.
+- **Swerve / massé:** combine cue elevation with left/right tip offset. The tilted spin creates sideways slip at the cloth, so friction bends the path. Softer strokes produce smaller hops and begin bending over shorter distances; a firm elevated shot can hop before bending. A ball in free flight does not curve from cloth friction. The violet guide follows the same physics as the live shot.
+- The white guide previews initial contact. The cyan cue-ball path is only a short post-impact estimate for level shots: it stops at the next obstruction and does not simulate an entire multi-ball sequence. Ball rotation is simulated alongside sliding/rolling cloth friction, cushion friction, and small ball-contact friction. Squirt and miscues are not modeled.
 
 ## Practicing jump shots
 
@@ -88,9 +90,39 @@ On desktop, focus the table or move handle and use arrow keys to nudge the selec
 3. Close the dialog, pull to around **100%** power, and release. A high-enough jump passes over the blocker; a lower flight can clip it. Use **Retry setup** to compare different angles and powers.
 4. For a ball obstructing the **cue stick behind the white**, Auto clearance raises the butt just enough to clear its geometry. A closer blocker usually requires more elevation. This shaft-clearance angle is separate from the angle needed to jump over a ball ahead.
 
-The elevated cue visibly tilts, and the side-view diagram shows its angle. An **amber guide** and ring estimate the first landing or collision, using the selected power, or 65% while idle. They replace the level-shot prediction for an elevated stroke; the cyan post-contact estimate is hidden. Existing guide/contact-circle switches still apply. Actual airborne height is rendered in 3D with ball shadows while the camera remains overhead.
+The elevated cue visibly tilts, and the side-view diagram shows its angle. An **amber jump guide** or **violet swerve/massé guide** follows flight, cloth travel, and rail rebounds until object-ball contact, removal, rest, or the preview limit. A separate ring marks the first landing at the height of the cloth or rail. The prediction uses the selected power, or 65% while idle. These replace the level-shot prediction for an elevated stroke; the cyan post-contact estimate is hidden. Existing guide/contact-circle switches still apply. Actual airborne height is rendered in 3D with ball shadows while the camera remains overhead.
 
-Jumps use an approximate downward strike/cloth rebound, gravity, height-aware ball contacts, landing bounces, and energy loss. Airborne balls can clear other balls and cushions; leaving the table incurs the usual match foul. Jumping does not waive first-contact, called-pocket, or rail/pocket requirements. Mode switching preserves a shot paused in flight. Cue clearance currently checks numbered balls, rather than simulating a player's bridge, body, or the shaft's contact with the rail.
+Jumps use an approximate downward strike/cloth rebound, gravity, height-aware ball contacts, landing bounces, and energy loss. Airborne balls can clear other balls and cushions, land on the rail, and return to play. Jumping does not waive first-contact, called-pocket, or rail/pocket requirements. Mode switching preserves a shot paused in flight. Cue clearance currently checks numbered balls, rather than simulating a player's bridge, body, or the shaft's contact with the rail.
+
+### Rail-running shots and table dimensions
+
+The cushions, flat wooden rail caps, pocket cutouts, and cloth use **shared rendering/collision triangles**. A ball can land on a rail, roll along the cap, roll down the cushion slope onto the cloth, fall into any pocket, or roll/fly beyond the outer edge. Merely crossing the cushion nose is not out of bounds. A ball that **comes to rest on top of the rail** is off-table; the shot resolves rather than leaving it stuck or making it roll artificially. Out-of-bounds removal emits its own event and follows the exit trajectory instead of being animated into a nearby pocket.
+
+This is a selected 9-foot profile based on the [WPA equipment specifications, sections 5–9](https://wpapool.com/wp-content/uploads/2024/01/RECOMMENDED-EQUIPMENT-SPECIFICATIONS.pdf):
+
+| Dimension | Model |
+| --- | --- |
+| Playing area | 100 × 50 inches |
+| Ball diameter | 2.25 inches |
+| Total rail width, including cushion | 6 inches (WPA range: 4–7.5) |
+| Covered cushion depth, nose to cap | 1 15/16 inches (WPA range: 1 7/8–2) |
+| Flat cap width behind the cushion | **4 1/16 inches / 103.2 mm** along the straight rails |
+| Nose height above cloth | **63.5% of ball diameter / 36.3 mm** |
+| Selected cap height above cloth | 1.75 inches / 44.45 mm |
+| Resulting cushion-top slope | **Approximately 9.4°** |
+| Corner / side pocket mouth | 4.5 / 5 inches |
+| Horizontal corner / side jaw angles | 142° / 104° |
+
+Manufacturers use different cap heights, rubber sections, pocket shelves, and corner shapes: WPA specifies ranges, not one universal rail profile. The cap height and rounded frame here are explicit design choices, not measurements copied from a particular brand. The model uses a triangular cushion section and approximate rigid contacts; it does not simulate rubber deformation or a manufacturer's full pocket back-draft/liner profile.
+
+### Stroke and cloth model
+
+- Power maps continuously to cue speed, with no minimum-speed kick. The maximum centered, level strike is calibrated to 47 world units/s (about 6.9 m/s). The instantaneous cue impulse uses a **170 g ball / 540 g cue** mass ratio and solid-sphere inertia `I = 2mr²/5`. Off-center hits transfer less energy at the same cue speed, while torque follows the actual cue-relative offset.
+- Downward cue motion is resolved against the table using the **same contact law as landing**: normal restitution **0.5**, tangential friction coefficient **0.18**, and a friction impulse capped at the amount needed to remove surface slip. This exchanges spin and translation without adding energy. Hops below approximately **0.03 mm** are settled to avoid endless numerical bounces; there is no special jump/swerve mode or spin-based hop suppression.
+- Sliding uses the velocity of the bottom contact point, `v + ω × (0, -r, 0)`. Position follows a parabola until slip reaches zero, then rolling takes over for the remainder of the timestep. Rolling and vertical-axis spin decay use exact integration of the existing speed-dependent resistance laws. Cloth-only travel is independent of timestep within floating-point precision; collisions are still resolved in adaptive fixed steps.
+- This is a rigid-body approximation with representative material parameters, not a calibration to a particular cue and cloth. Finite-duration tip/cloth compression, shaft deflection (squirt), and miscues remain outside this model.
+
+References: [billiards cloth-motion derivation](https://ekiefl.github.io/2020/04/24/pooltool-theory/#section-i-ball-cloth-interactions), [finite-mass cue-impact reference](https://github.com/ekiefl/pooltool/blob/main/pooltool/physics/resolve/stick_ball/instantaneous_point/__init__.py), and [representative ball/table parameters](https://github.com/ekiefl/pooltool/blob/main/pooltool/objects/ball/params.py). These provide model/reference values, rather than validation against measured shots on this game's table.
 
 ## Build and test
 
@@ -106,7 +138,9 @@ Deploy the generated `dist/` directory to any static web host. The game uses Web
 
 - `src/main.js` — input, UI, game loop, and turn flow
 - `src/table.js` — Three.js table, ball materials, aiming guides, and rendering
-- `src/table-geometry.js` — shared tapered cushion shapes, pocket openings, and aiming boundaries
+- `src/table-geometry.js` — regulation-scale table dimensions, cushion outlines, and pocket openings
+- `src/rail-geometry.js` — shared cloth/cushion/cap collision triangles, spatial lookup, and 3D sphere-sweep aiming boundaries
+- `src/rail-motion.js` — 3D rail contact impulses, cap support, and gravity-driven motion on cushion slopes
 - `src/physics.js` — fixed-step ball physics, randomized legal racks, and rule-event emission
 - `src/match-rules.js` — UPA-based amateur 8-ball rules and shared chronological shot tracking
 - `src/nine-ball.js` — UPA-based 9-ball rules, push-outs, foul warnings, and 9-ball spotting
@@ -114,7 +148,7 @@ Deploy the generated `dist/` directory to any static web host. The game uses Web
 - `src/aim-preview.js` — short spin-aware cue-ball path estimates
 - `src/ball-motion.js` — angular motion, cloth friction, and spin-aware collision impulses
 - `src/cue-elevation.js` — shared 3D cue pose and geometry-based minimum ball clearance
-- `src/jump-preview.js` — first-landing/contact estimate using the height-aware physics solver
+- `src/elevated-preview.js` — elevated-shot flight and cloth-path estimate using the live physics solver
 - `src/spin.js`, `src/spin-control.js`, `src/spin.css` — contact-point mapping and touch/keyboard spin selection
 - `src/audio.js` — optional Web Audio effects
 - `src/shot-control.js` — drag-to-charge/release-to-shoot gestures and keyboard controls
@@ -128,5 +162,6 @@ Deploy the generated `dist/` directory to any static web host. The game uses Web
 - `src/style.css` — responsive mobile/desktop layouts
 - `src/layout.css` — compact, viewport-filling layout with a reversible side power control
 - `tests/game.test.js` — physics and game-rule tests using Node’s built-in test runner
+- `tests/rail-physics.test.js` — rail landings, returns, all six pocket entries, out-of-bounds rules, and stuck-ball regressions
 
 All visual assets are generated in code. Multiplayer is local pass-and-play on one device.

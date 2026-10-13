@@ -38,7 +38,8 @@ test('a cushion reflects a ball and reduces its speed', () => {
   physics.balls = [ball(0, TABLE.width / 2 - TABLE.radius - 0.001, 3, 6)];
   physics.step(1 / 240);
   assert.ok(physics.cue.vx < 0 && physics.cue.vx > -6);
-  assert.ok(physics.cue.x <= TABLE.width / 2 - TABLE.radius);
+  const noseReach = Math.sqrt(TABLE.radius ** 2 - (TABLE.cushionNoseHeight - TABLE.radius) ** 2);
+  assert.ok(physics.cue.x <= TABLE.width / 2 - noseReach + 0.00001);
 });
 
 test('all six pockets capture a ball and emit exactly one pocket event', () => {
