@@ -28,7 +28,7 @@ Vite uses relative asset URLs so JavaScript and CSS load correctly under the rep
 
 ## Play
 
-The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, or **Playground**. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. Each mode keeps its own table and match state while the page remains open, including a shot paused in motion. Reloading the page starts a fresh session; Playground’s five saved setup slots remain available.
+The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, **Call Pocket**, or **Playground**. **Call Pocket** opens a dialog to choose **8-ball** or **9-ball** with called-shot rules; the regular modes need no pocket calls. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. All four match variants and Playground keep independent tables and state while the page remains open, including shots paused in motion. Reloading the page starts a fresh session; Playground’s five saved setup slots remain available.
 
 - **Touch to aim:** a tap on the cloth aims at that point when you release. A swipe rotates your existing aim without snapping toward your finger on touch-down or release. The white dotted line shows the initial path, the gold line previews the first target ball, and the cyan line estimates the white ball’s short post-contact path, including draw/follow. The contact circle marks the impact position. The trajectory lines render above balls.
 - **Aiming aids:** Settings has independent switches for the initial guide, target-ball line, white-ball path, and contact circle. Choices are saved on this device when storage is available. The cue remains visible even with every aid off.
@@ -46,11 +46,11 @@ The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-b
 ### Two-player 8-ball
 
 - **Break:** place the cue behind the head string with the move handle, confirm, and shoot. Pocket a numbered ball or drive four distinct object balls to rails. An illegal break re-racks with the opponent choosing who breaks. A legal 8-ball break wins under the selected UPA rules; pocketing it with a foul loses.
-- **Call your shot:** after the break, choose one ball and pocket using **Call shot**, or declare **Safety**. P1–P6 labels match the pockets on the table. This app requests an explicit call even for obvious shots.
-- **Turns and groups:** the table stays open after the break. The first legally pocketed called ball assigns solids/stripes. Legally making your called shot retains the turn; a miss or safety passes it. Extra pocketed balls stay down.
-- **Win:** first clear your group, then legally pocket the 8 in its called pocket on a later shot. An early 8, wrong 8-ball pocket, or 8 on a foul loses. A scratch while attempting the 8 is only a foul if the 8 stays on the table.
+- **No pocket calls:** aim and shoot after confirming any required cue placement. For called shots, choose **Call Pocket → 8-ball** instead.
+- **Turns and groups:** the table stays open after the break. The first legally pocketed solid or stripe assigns the group (pocket-event order decides if both fall). A legal pocket of your group retains the turn; a miss or an opponent-only pocket passes it. Extra pocketed balls stay down.
+- **Win:** first clear your group, then legally pocket the 8 in any pocket on a later shot. An early 8 or 8 on a foul loses. A scratch while attempting the 8 is only a foul if the 8 stays on the table.
 - **Fouls / ball in hand:** scratches, wrong first contact, no object-ball contact, no rail/pocket after contact, illegal kitchen contact, close double-hit approaches, and off-table balls are enforced. The opponent can place the cue anywhere clear, except after a legal-break foul: placement is behind the head string and the first object hit must be outside the kitchen. Confirm placement before aiming.
-- **Match rules:** UPA-based **amateur** 8-ball, not the pro-only three-foul variant. New racks default to alternating breakers; the New Game dialog permits an agreed opening breaker. Settings includes concession and a mutually agreed stalemate after three consecutive foul innings each. See [RULES.md](RULES.md) for the source and digital scope.
+- **Match rules:** a **no-call house variant** of UPA-based amateur 8-ball, not the pro-only three-foul variant. New racks default to alternating breakers; the New Game dialog permits an agreed opening breaker. Settings includes concession and a mutually agreed stalemate after three consecutive foul innings each. See [RULES.md](RULES.md) for the source and digital scope.
 
 ### Two-player 9-ball
 
@@ -61,6 +61,14 @@ The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-b
 - **Fouls and spotting:** fouls give the opponent ball in hand **anywhere**, including after a legal-break foul. A 9 pocketed on a foul or push-out, or driven off the table, is re-spotted; other removed balls stay down. A re-spotted 9 is removed from the pocketed-ball tray.
 - **Three consecutive fouls:** each player's HUD shows their foul count. After a second foul, a dialog asks the opponent to warn the player and select **Warning given**. A subsequent foul before an intervening legal shot loses the game only if that warning was acknowledged. A legal shot clears the shooter's streak and warning.
 - **Match rules:** based on [UPA 9-ball](https://upatour.com/9-ball-rules/), with alternating breakers and concession through Settings. See [RULES.md](RULES.md) for details and digital conventions.
+
+### Call Pocket → 8-ball or 9-ball
+
+- Select **Call Pocket** on the menu, then choose **8-ball** or **9-ball** in the dialog. Each has its own match, separate from regular 8-ball and 9-ball. Returning to a choice resumes its table; use New Game for a fresh rack.
+- After the break, use **Call shot** to select one ball and a pocket (**P1–P6**), or declare **Safety**. Only a legally made call retains the turn. A missed call alone is not a foul; normal first-contact and rail/pocket rules still apply. Safety ends the turn even when balls fall.
+- **8-ball:** groups are assigned by the first legally made called shot. Clear your group, then call and pocket the 8 on a later shot. An early 8, a wrong-pocket 8, or an 8 on a foul loses. This preserves the original UPA-based explicit-call rules.
+- **9-ball:** a **house variant** requiring a called ball and pocket. Hit the lowest remaining ball first, but call any remaining ball for combinations. A legal called 9 wins; an uncalled or wrong-pocket 9 is re-spotted. If another called ball is legally made while the 9 falls incidentally, re-spot the 9 and keep the turn. Other pocketed balls stay down. Push-outs and the warned three-foul rule still apply.
+- **Exceptions:** no call is required on either break or a declared 9-ball push-out. A legal 8 or 9 on the break still wins under the existing break rules.
 
 ## Playground / trick shots
 

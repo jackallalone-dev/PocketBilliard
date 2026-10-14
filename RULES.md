@@ -6,7 +6,16 @@ Sources are the United States Professional Poolplayers Association’s official 
 
 Pocket Club implements the applicable on-table rules, choosing the **amateur** variant for 8-ball. It is a digital adaptation with optional aiming aids, not a certified tournament/referee system. Each match mode has an independent session. Playground remains unrestricted and does not use the match rule engine.
 
-## 8-ball implementation
+## Mode selection and house variants
+
+The main menu offers regular **8-ball**, regular **9-ball**, and **Call Pocket**, which opens an **8-ball / 9-ball** chooser. All four variants maintain independent matches. Restarting or re-racking keeps the selected variant.
+
+- **Regular 8-ball** is a no-call house variant of the 8-ball table below. After the break, the first legally pocketed solid or stripe assigns groups; if both fall, chronological pocket order decides. Any legal pocket of the shooter's group retains the turn. After clearing the group, a legal 8 in any pocket wins. Early 8s and 8s on fouls still lose. No Call shot or Safety declaration is required.
+- **Call Pocket 8-ball** uses the explicit-call behavior in the 8-ball table below.
+- **Regular 9-ball** uses the 9-ball table below, with no pocket calls.
+- **Call Pocket 9-ball** is a house variant: after the break, call a ball and pocket or declare Safety. The lowest remaining ball must still be contacted first; any remaining ball may be called for combinations. A made legal call retains the turn, and a missed call passes it without a foul if the shot is otherwise legal. The 9 wins only when called and made in its called pocket; otherwise it is spotted. A made call on another ball still retains the turn if an incidental 9 must be spotted. Other pocketed balls stay down. Safety passes the turn and still requires legal contact and a subsequent rail/pocket. Breaks and legal push-outs need no call; existing break wins, push decisions, foul penalties, and the warned three-foul loss remain in force.
+
+## Call Pocket 8-ball implementation
 
 | Source | In-game behavior |
 | --- | --- |
@@ -57,7 +66,7 @@ Section references in this table are to the UPA 9-ball source.
 
 ## Shared digital conventions and non-applicable items
 
-- **8-ball explicit calls:** UPA permits obvious balls/pockets without a verbal declaration. This interface requires an explicit call on every non-break 8-ball shot, avoiding ambiguous guesses about a player’s intended bank, kick, combination, or 8-ball pocket. Declaring Safety is the alternative. These controls do not apply to 9-ball.
+- **Explicit calls:** UPA permits obvious 8-ball shots without a verbal declaration. Both **Call Pocket** variants require an explicit ball-and-pocket call on non-break shots, avoiding guesses about intended banks, kicks, combinations, or winning pockets. Declaring Safety is the alternative, and legal 9-ball push-outs are exempt. Regular 8-ball and 9-ball do not use these controls.
 - **Ball in hand:** use the ball or its offset handle, then confirm. Placement automatically avoids overlaps rather than permitting accidental disturbance fouls. The cue returns to a valid provisional spot after a scratch, but the incoming player can reposition it.
 - **Illegal actions prevented by the interface:** shooting while balls move, moving object balls during match play, and multiple cue strikes in one stroke. The displayed active player controls each hot-seat inning; the software cannot identify which physical person is touching the device.
 - **First break:** there are no player speed ratings or a physical lag minigame. Player 1 is the initial default, with an agreed breaker selectable through New Game.
@@ -70,10 +79,10 @@ Section references in this table are to the UPA 9-ball source.
 - **Pocket/flight phenomena:** pockets filled with supporting balls, suspended balls, pocket rebounds, table defects, and delayed hanging-ball drops are not modeled. A captured ball is permanently pocketed for that shot; any engine-detected off-table ball still receives the rule penalty.
 - **Aiming aids:** guide lines and trajectory estimates are optional digital assistance. They can be independently disabled in Settings. The cyan cue-ball estimate is a short prediction for level shots, not a guarantee of the entire shot. Elevated shots use an amber estimate through the first landing or collision, at the selected power (65% while idle).
 
-## 8-ball controls
+## Call Pocket controls
 
 1. Place/confirm the cue for a break or ball in hand.
 2. After the break, choose **Call shot** → ball → pocket (P1–P6), or **Safety**.
 3. Aim, choose spin, pull the power control, and release.
 4. Read the foul/turn message. If an illegal break occurs, the incoming player chooses the re-break option.
-5. Use Settings for concession or an eligible mutual stalemate. Restart/another round defaults to the alternating breaker.
+5. Use Settings for concession or an eligible 8-ball mutual stalemate. Restart/another round defaults to the alternating breaker and preserves the selected variant. In Call Pocket 9-ball, the HUD still identifies the lowest ball to hit first; Push is available only immediately after a legal break.

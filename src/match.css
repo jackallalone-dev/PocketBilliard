@@ -7,10 +7,14 @@
 #match-safety { grid-column: 2; grid-row: 1; }
 #nine-push { grid-column: 2; grid-row: 1; }
 .nine-target { grid-column: 1; grid-row: 1; display: flex; align-items: center; min-width: 0; color: var(--accent); font-size: 10px; white-space: nowrap; }
-.game[data-mode="nine"] .pocket-labels { display: none; }
-.game[data-mode="nine"] .ball-tray { gap: 3px; }
-.game[data-mode="nine"] .ball-tray .tray-ball { width: 11px; height: 11px; }
-.game[data-mode="nine"] .ball-tray .tray-ball.next-ball { outline: 1px solid var(--accent); outline-offset: 2px; }
+.game[data-call-pocket="false"] .pocket-labels { display: none; }
+.game[data-rack="nine"] .ball-tray { gap: 3px; }
+.game[data-rack="nine"] .ball-tray .tray-ball { width: 11px; height: 11px; }
+.game[data-rack="nine"] .ball-tray .tray-ball.next-ball { outline: 1px solid var(--accent); outline-offset: 2px; }
+.game[data-mode="call-nine"] .match-buttons { grid-template-columns: minmax(0, 1fr) 48px 48px 100px; }
+.game[data-mode="call-nine"] #nine-push { grid-column: 3; }
+.game[data-mode="call-nine"] .match-placement-slot { grid-column: 4; }
+#match-call { overflow: hidden; text-overflow: ellipsis; }
 .player-card.foul-warning .player-group { color: #efac83; }
 .match-settings [hidden] { display: none; }
 .match-placement-slot { grid-column: 3; grid-row: 1; display: grid; grid-template: 32px / minmax(0, 1fr); min-width: 0; }

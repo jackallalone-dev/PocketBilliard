@@ -57,7 +57,7 @@ export class ShotTracker {
 // UPA amateur 8-ball. Event reports come from the shot's chronological physics
 // events, not just the final list of balls that happened to fall.
 export class EightBallGame {
-  constructor() { this.reset(); }
+  constructor({ callPocket = true } = {}) { this.callPocket = callPocket;this.reset(); }
   reset(breaker = 0) {
     this.breaker = breaker === 1 ? 1 : 0;
     this.currentPlayer = this.breaker;
@@ -78,9 +78,13 @@ export class EightBallGame {
     return remaining.length ? remaining : [8];
   }
 
-  callReady(call) {
-    return this.isBreak || !!call?.safety || (this.targets().includes(call?.ball) && Number.isInteger(call?.pocket) && call.pocket >= 0 && call.pocket < 6);
+  callTargets() { return this.targets(); }
+
+  validCall(call) {
+    return this.callTargets().includes(call?.ball) && Number.isInteger(call?.pocket) && call.pocket >= 0 && call.pocket < 6;
   }
+
+  callReady(call) { return !this.callPocket || this.isBreak || !!call?.safety || this.validCall(call); }
 
   confirmPlacement(cue) {
     if (!this.ballInHand || cue.pocketed || (this.ballInHand === 'kitchen' && cue.z <= TABLE.headSpot)) return false;
@@ -151,23 +155,24 @@ export class EightBallGame {
     if (!report.railAfterContact && !report.pocketAfterContact) foul ||= 'no-rail';
     if (report.closeHit) foul ||= 'close-double-hit';
     const call = report.call || {};
-    const legalCall = legalTargets.includes(call.ball) && Number.isInteger(call.pocket) && call.pocket >= 0 && call.pocket < 6;
+    const legalCall = this.validCall(call);
     const madeCall = !call.safety && legalCall && pockets.some((p) => p.id === call.ball && p.pocket === call.pocket);
+    const creditedBall = this.callPocket ? (madeCall ? call.ball : null) : (pockets.find((p) => legalTargets.includes(p.id) && !offTable.includes(p.id))?.id ?? null);
     for (const id of [...ids, ...offTable]) if (id > 0) this.pocketed.add(id);
     if (black) {
-      const won = !foul && !offTable.includes(8) && onEight && madeCall && call.ball === 8;
+      const won = !foul && !offTable.includes(8) && onEight && (!this.callPocket || madeCall && call.ball === 8);
       this.winner = won ? shooter : other;
       return { winner: this.winner, scratch, foul, reason: won ? 'cleared' : foul ? 'eight-on-foul' : onEight ? 'wrong-eight-pocket' : 'early-eight' };
     }
-    if (!foul && madeCall && !this.groups[shooter]) {
-      this.groups[shooter] = groupOf(call.ball);
-      this.groups[other] = groupOf(call.ball) === 'solids' ? 'stripes' : 'solids';
+    if (!foul && creditedBall !== null && !this.groups[shooter]) {
+      this.groups[shooter] = groupOf(creditedBall);
+      this.groups[other] = groupOf(creditedBall) === 'solids' ? 'stripes' : 'solids';
     }
-    const keepTurn = !foul && madeCall;
+    const keepTurn = !foul && creditedBall !== null;
     this.currentPlayer = keepTurn ? shooter : other;
     this.ballInHand = foul ? 'table' : null;
     this.placementConfirmed = false;this.shotNumber++;
     this.consecutiveFouls[shooter] = foul ? this.consecutiveFouls[shooter] + 1 : 0;
-    return { player: this.currentPlayer, keepTurn, scratch, foul, safety: !!call.safety, madeCall, ballInHand: this.ballInHand };
+    return { player: this.currentPlayer, keepTurn, scratch, foul, safety: this.callPocket && !!call.safety, madeCall, ballInHand: this.ballInHand };
   }
 }

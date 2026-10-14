@@ -5,6 +5,8 @@ import { REST_MOTION } from './ball-motion.js';
 export const NINE_BALL_RULES_SOURCE = 'https://upatour.com/9-ball-rules/';
 
 export class NineBallGame extends EightBallGame {
+  constructor({ callPocket = false } = {}) { super({ callPocket }); }
+
   reset(breaker = 0) {
     super.reset(breaker);
     this.pushAvailable = false;
@@ -15,8 +17,13 @@ export class NineBallGame extends EightBallGame {
   remaining() { return Array.from({ length: 9 }, (_, i) => i + 1).filter((id) => !this.pocketed.has(id)); }
   get lowestBall() { return this.remaining()[0] ?? null; }
   targets() { return this.lowestBall === null ? [] : [this.lowestBall]; }
+  callTargets() { return this.remaining(); } // Combinations may call any remaining ball.
   get stalemateEligible() { return false; }
-  callReady(call) { return !this.pendingBreak && !this.pendingPush && (!call?.push || this.pushAvailable); }
+  callReady(call) {
+    if (this.pendingBreak || this.pendingPush) return false;
+    if (call?.push) return !this.isBreak && this.pushAvailable;
+    return super.callReady(call);
+  }
 
   acknowledgeWarning(player) {
     if (![0, 1].includes(player) || this.winner !== null || this.consecutiveFouls[player] < 2) return false;
@@ -42,6 +49,9 @@ export class NineBallGame extends EightBallGame {
     const push = !wasBreak && !!report.call?.push && this.pushAvailable;
     let foul = scratch ? 'scratch' : offTable.length ? 'ball-off-table' : null;
     const numberedPocketed = ids.some((id) => id >= 1 && id <= 9 && !offTable.includes(id));
+    const safety = this.callPocket && !!report.call?.safety;
+    const madeCall = !safety && this.validCall(report.call) && pockets.some((p) => p.id === report.call.ball && p.pocket === report.call.pocket);
+    const calledNine = madeCall && report.call.ball === 9;
 
     if (wasBreak) {
       const legalBreak = numberedPocketed || new Set(report.numberedRails || []).size >= 3;
@@ -63,7 +73,7 @@ export class NineBallGame extends EightBallGame {
     if (report.closeHit) foul ||= 'close-double-hit';
 
     for (const id of [...ids, ...offTable]) if (id >= 1 && id <= 9) this.pocketed.add(id);
-    const spotNine = nineDown && (!!foul || push);
+    const spotNine = nineDown && (!!foul || push || this.callPocket && !wasBreak && !calledNine);
     if (spotNine) this.pocketed.delete(9);
     this.isBreak = false;
     // UPA §5 permits a push only on the shot immediately after the break.
@@ -88,13 +98,13 @@ export class NineBallGame extends EightBallGame {
       this.currentPlayer = other;
       return { player: other, pushOut: true, spotNine, keepTurn: false, foul: null, scratch: false };
     }
-    if (nineDown) {
+    if (nineDown && !spotNine) {
       this.winner = shooter;
       return { winner: shooter, reason: wasBreak ? 'nine-on-break' : 'nine-pocketed', foul: null, scratch: false };
     }
-    const keepTurn = numberedPocketed;
+    const keepTurn = this.callPocket && !wasBreak ? madeCall : numberedPocketed;
     this.currentPlayer = keepTurn ? shooter : other;
-    return { player: this.currentPlayer, keepTurn, foul: null, scratch: false, spotNine: false };
+    return { player: this.currentPlayer, keepTurn, foul: null, scratch: false, spotNine, safety, madeCall };
   }
 }
 

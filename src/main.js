@@ -3,7 +3,7 @@ import './layout.css';
 import './playground.css';
 import './spin.css';
 import './match.css';
-import { PoolPhysics, EightBallGame, BALL_COLORS, POCKETS } from './physics.js';
+import { PoolPhysics, BALL_COLORS, POCKETS } from './physics.js';
 import { TableView } from './table.js';
 import { GameAudio } from './audio.js';
 import { ShotControl } from './shot-control.js';
@@ -22,10 +22,11 @@ import { TABLE } from './table-geometry.js';
 import { shotEffects } from './shot-effects.js';
 import { ShotTracker, POCKET_NAMES } from './match-rules.js';
 import { CuePlacement } from './cue-placement.js';
-import { NineBallGame, spotNineBall } from './nine-ball.js';
+import { spotNineBall } from './nine-ball.js';
+import { GAME_MODES, createMatches } from './game-modes.js';
 
 const $ = (id) => document.getElementById(id);
-const matches = { match: new EightBallGame(), nine: new NineBallGame() };
+const matches = createMatches();
 let game = matches.match;
 const audio = new GameAudio();
 const pocketHistory = new PocketHistory();
@@ -81,7 +82,9 @@ const physics = new PoolPhysics((event) => {
 const cuePlacement = new CuePlacement(physics, game);
 
 function canInteract() { return !!view && !menuOpen && !contextLost && !document.hidden && !document.querySelector('dialog[open]'); }
-function isMatch() { return mode === 'match' || mode === 'nine'; }
+function isMatch() { return !!matches[mode]; }
+function isNine() { return GAME_MODES[mode].rack === 'nine'; }
+function isCallPocket() { return GAME_MODES[mode].callPocket; }
 function canEdit() { return canInteract() && mode === 'playground' && playground.editing && !inShot; }
 function canPlaceCue() { return canInteract() && isMatch() && !inShot && game.winner === null && !game.pendingBreak && !game.pendingPush && !!game.ballInHand && !game.placementConfirmed; }
 function canArrange() { return canEdit() || canPlaceCue(); }
@@ -259,6 +262,8 @@ function updatePlacementOverlay() {
 function updatePlaygroundUI() {
   const active = mode === 'playground';
   document.querySelector('.game').dataset.mode = mode;
+  document.querySelector('.game').dataset.rack = GAME_MODES[mode].rack || '';
+  document.querySelector('.game').dataset.callPocket = String(isCallPocket());
   document.querySelector('.game').dataset.editing = String(active && playground.editing || canPlaceCue());
   $('pg-arrange').setAttribute('aria-pressed', String(playground.editing));
   $('pg-shoot').setAttribute('aria-pressed', String(!playground.editing));
@@ -278,23 +283,23 @@ function updatePocketLabels() {
   for (const [index, label] of [...$('pocket-labels').children].entries()) {
     const p = view.ballToScreen(POCKETS[index]);
     label.style.left = `${p.x - rect.left}px`;label.style.top = `${p.y - rect.top}px`;
-    label.classList.toggle('called', !game.isBreak && !shotCall.safety && shotCall.pocket === index);
+    label.classList.toggle('called', isCallPocket() && !game.isBreak && !shotCall.safety && !shotCall.push && shotCall.pocket === index);
   }
 }
 
 function updateMatchUI() {
-  const active = isMatch(), nine = mode === 'nine';
+  const active = isMatch(), nine = isNine(), calling = isCallPocket();
   const placing = canPlaceCue();
   const available = active && canAimNow();
-  const callLabel = nine ? shotCall.push ? 'Push-out declared' : `Hit ${game.lowestBall ?? '—'} first` : shotCall.safety ? 'Safety declared' : game.callReady(shotCall) && !game.isBreak ? `Ball ${shotCall.ball} → P${shotCall.pocket + 1}` : 'Call shot';
+  const callLabel = shotCall.push ? 'Push-out declared' : calling ? shotCall.safety ? 'Safety declared' : game.validCall(shotCall) && !game.isBreak ? `Ball ${shotCall.ball} → P${shotCall.pocket + 1}` : 'Call shot' : nine ? `Hit ${game.lowestBall ?? '—'} first` : 'No pocket call needed';
   $('match-call').textContent = callLabel;
-  $('match-call').hidden = nine || game.isBreak || !!game.pendingBreak || game.winner !== null;
+  $('match-call').hidden = !calling || game.isBreak || !!game.pendingBreak || !!game.pendingPush || game.winner !== null;
   $('match-call').disabled = !available;
-  $('match-safety').hidden = nine || game.isBreak || !!game.pendingBreak || game.winner !== null;
+  $('match-safety').hidden = !calling || game.isBreak || !!game.pendingBreak || !!game.pendingPush || game.winner !== null;
   $('match-safety').disabled = !available;
   $('match-safety').setAttribute('aria-pressed', String(shotCall.safety));
-  $('nine-target').hidden = !nine;
-  $('nine-target').textContent = callLabel;
+  $('nine-target').hidden = !nine || calling;
+  $('nine-target').textContent = `Hit ${game.lowestBall ?? '—'} first`;
   $('nine-push').hidden = !nine || !game.pushAvailable || game.winner !== null || !!game.pendingPush;
   $('nine-push').disabled = !available;
   $('nine-push').setAttribute('aria-pressed', String(!!shotCall.push));
@@ -312,13 +317,14 @@ function updateMatchUI() {
   else if (inShot) instruction = game.isBreak ? 'Break in motion.' : callLabel;
   else if (game.ballInHand && !game.placementConfirmed) instruction = `${lastRuleMessage ? `${lastRuleMessage}. ` : ''}Place cue ${game.ballInHand === 'kitchen' ? 'behind the head string' : 'anywhere clear'}, then confirm.`;
   else if (game.isBreak) instruction = nine ? 'Break: hit 1 first; pocket a ball or send 3 object balls to rails.' : 'Break: pocket a ball or send 4 object balls to rails.';
-  else if (nine) instruction = shotCall.push ? 'Push declared: no first-ball or rail requirement. Opponent chooses next.' : `Hit ${game.lowestBall} first. A legal 9 wins.${game.pushAvailable ? ' Push-out available for this shot.' : ''}${game.consecutiveFouls[game.currentPlayer] >= 2 ? game.warned[game.currentPlayer] ? ' Foul warning: next foul loses.' : ' Two or more fouls: no warning given yet.' : ''}`;
-  else if (game.ballInHand === 'kitchen') instruction = 'First hit must be outside the kitchen. Call your shot.';
-  else instruction = shotCall.safety ? 'Safety: your turn ends after this shot.' : game.callReady(shotCall) ? callLabel : 'Call a ball and pocket, or declare Safety.';
+  else if (nine) instruction = shotCall.push ? 'Push declared: no first-ball or rail requirement. Opponent chooses next.' : `Hit ${game.lowestBall} first. ${calling ? shotCall.safety ? 'Safety: your turn ends after this shot.' : game.validCall(shotCall) ? callLabel + '.' : 'Call a ball and pocket, or declare Safety.' : 'A legal 9 wins.'}${game.pushAvailable ? ' Push-out available for this shot.' : ''}${game.consecutiveFouls[game.currentPlayer] >= 2 ? game.warned[game.currentPlayer] ? ' Foul warning: next foul loses.' : ' Two or more fouls: no warning given yet.' : ''}`;
+  else if (game.ballInHand === 'kitchen') instruction = `First hit must be outside the kitchen. ${calling ? 'Call your shot or declare Safety.' : 'No pocket call needed.'}`;
+  else if (!calling) instruction = game.groups[game.currentPlayer] ? game.remaining(game.currentPlayer).length ? 'Hit your group first. Any legal pocket of your group keeps your turn.' : 'Clear: pocket the 8 legally in any pocket to win.' : 'Open table: the first legally pocketed solid or stripe assigns your group.';
+  else instruction = shotCall.safety ? 'Safety: your turn ends after this shot.' : game.validCall(shotCall) ? callLabel : 'Call a ball and pocket, or declare Safety.';
   $('match-instruction').textContent = instruction;
   $('match-instruction').title = instruction;
   $('match-settings').hidden = !active || menuOpen;
-  $('match-rules-label').textContent = nine ? 'UPA-based 9-ball · three-foul rule' : 'UPA-based amateur 8-ball';
+  $('match-rules-label').textContent = calling ? `${GAME_MODES[mode].label}${nine ? ' · house variant' : ''}` : nine ? 'UPA-based 9-ball · no pocket calls' : '8-ball · no pocket calls · house variant';
   $('match-concede').disabled = !active || inShot || game.winner !== null || !!game.pendingBreak;
   $('match-stalemate').disabled = !active || inShot || game.winner !== null || !game.stalemateEligible;
   $('match-stalemate').hidden = $('stalemate-note').hidden = nine;
@@ -335,17 +341,17 @@ function openMainMenu() {
   $('app').hidden = true;
   $('main-menu').hidden = false;
   $('menu-continue').hidden = !hasStarted;
-  $('menu-continue').firstChild.textContent = mode === 'playground' ? 'Continue playground ' : mode === 'nine' ? 'Continue 9-ball ' : 'Continue 8-ball ';
+  $('menu-continue').firstChild.textContent = `Continue ${GAME_MODES[mode].label} `;
   updateUI();
   (hasStarted ? $('menu-continue') : $('menu-match')).focus({ preventScroll: true });
 }
 
 function enterMode(nextMode) {
-  if (!view || contextLost || !['match', 'nine', 'playground'].includes(nextMode)) return;
+  if (!view || contextLost || !Object.hasOwn(GAME_MODES, nextMode)) return;
   cancelGestures();
   if (nextMode !== mode) {
     sessions[mode] = { balls: physics.balls, inShot, shotBalls: [...shotBalls], tracker: shotTracker, call: { ...shotCall }, step: physics.stepNumber, settleTime, angle, spin: { ...selectedSpin }, elevation: selectedElevation, history: [...pocketHistory.ids], ruleMessage: lastRuleMessage };
-    const session = sessions[nextMode] || { balls: nextMode === 'playground' ? playground.balls : new PoolPhysics(() => {}, nextMode === 'nine' ? 'nine' : 'eight').balls, inShot: false, shotBalls: [], tracker: null, call: {}, step: 0, settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [], ruleMessage: '' };
+    const session = sessions[nextMode] || { balls: nextMode === 'playground' ? playground.balls : new PoolPhysics(() => {}, GAME_MODES[nextMode].rack).balls, inShot: false, shotBalls: [], tracker: null, call: {}, step: 0, settleTime: 0, angle: 0, spin: { x: 0, y: 0 }, history: [], ruleMessage: '' };
     mode = nextMode;
     if (matches[mode]) game = matches[mode];
     cuePlacement.game = game;
@@ -516,7 +522,7 @@ function updateShotUI() {
 }
 
 function updateUI(message) {
-  const nine = mode === 'nine';
+  const nine = isNine();
   $('game-ball-badge').textContent = nine ? '9' : '8';
   for (let player = 0; player < 2; player++) {
     const card = $(`player-${player}`);
@@ -572,7 +578,7 @@ function updateUI(message) {
     strong.textContent = 'Playground';
     status.append(strong, document.createTextNode(inShot ? ' · Shot in motion.' : playground.editing ? ' · Drag a ball or its handle to arrange.' : ' · Aim and shoot. Retry to restore your setup.'));
   } else {
-    strong.textContent = `Player ${(game.winner ?? game.currentPlayer) + 1}`;
+    strong.textContent = `${isCallPocket() ? `${GAME_MODES[mode].label} · ` : ''}Player ${(game.winner ?? game.currentPlayer) + 1}`;
     status.append(strong, document.createTextNode(message || (game.winner !== null ? ' wins. What a game.' : inShot ? ' is at the table.' : game.shotNumber === 1 ? ', break the ice.' : ', the table is yours.')));
   }
   updatePlaygroundUI();updatePlacementOverlay();updateMatchUI();
@@ -613,9 +619,9 @@ function finishShot() {
     lastRuleMessage = result.foul ? foulMessages[result.foul] : '';
     if (game.ballInHand) cuePlacement.prepare();
     const name = `Player ${game.currentPlayer + 1}`;
-    toast(result.foul ? `${lastRuleMessage}${result.spotNine ? ' · 9 re-spotted' : ''} · ${name} has ball in hand` : result.keepTurn ? mode === 'nine' ? `${name} shoots again. Hit ${game.lowestBall} first.` : `${name} shoots again. Call the next shot.` : `${result.safety ? 'Safety' : 'Pass it over'} · ${name}’s turn`);
+    toast(result.foul ? `${lastRuleMessage}${result.spotNine ? ' · 9 re-spotted' : ''} · ${name} has ball in hand` : `${result.spotNine ? '9 re-spotted · ' : ''}${result.keepTurn ? `${name} shoots again.${isCallPocket() ? ' Call the next shot.' : isNine() ? ` Hit ${game.lowestBall} first.` : ''}` : `${result.safety ? 'Safety' : 'Pass it over'} · ${name}’s turn`}`);
     if (!result.keepTurn && navigator.vibrate) navigator.vibrate([20, 35, 20]);
-    if (mode === 'nine' && result.warningPlayer !== null && result.warningPlayer !== undefined) showFoulWarning(result.warningPlayer);
+    if (isNine() && result.warningPlayer !== null && result.warningPlayer !== undefined) showFoulWarning(result.warningPlayer);
   }
   aimDirty = true;
   updateUI();
@@ -623,18 +629,18 @@ function finishShot() {
 
 function showWinner(result) {
   const reasons = {
-    cleared: 'The called 8-ball was pocketed legally after clearing the group.',
+    cleared: `The 8-ball was pocketed legally${isCallPocket() ? ' in its called pocket' : ''} after clearing the group.`,
     'eight-on-break': 'The 8 went down on a legal break. Under UPA rules, that wins the game.',
     'eight-on-foul': 'The 8-ball was pocketed on a foul. The opponent wins.',
     'eight-off-table': 'The 8-ball left the playing surface. The opponent wins.',
     'wrong-eight-pocket': 'The 8-ball did not go into its called pocket.',
     'early-eight': 'The 8-ball fell before the shooter was legally on the 8.',
     conceded: 'The other player conceded the game.',
-    'nine-pocketed': 'The lowest ball was contacted first and the 9 went down on a legal shot.',
+    'nine-pocketed': `The lowest ball was contacted first and the 9 went down${isCallPocket() ? ' in its called pocket' : ''} on a legal shot.`,
     'nine-on-break': 'The 1 was hit first and the 9 went down on a legal break.',
     'three-fouls': 'Three consecutive fouls after the two-foul warning. The opponent wins.',
   };
-  $('winner-dialog').querySelector('.winner-ball').textContent = mode === 'nine' ? '9' : '8';
+  $('winner-dialog').querySelector('.winner-ball').textContent = isNine() ? '9' : '8';
   $('winner-title').textContent = `Player ${result.winner + 1} wins.`;
   $('winner-detail').textContent = reasons[result.reason];
   openDialog('winner-dialog');
@@ -642,14 +648,14 @@ function showWinner(result) {
 
 function showBreakChoice() {
   if (!game.pendingBreak) return;
-  $('break-detail').textContent = `No numbered ball was pocketed and fewer than ${mode === 'nine' ? 'three' : 'four'} object balls reached rails. Player ${game.pendingBreak.chooser + 1}, choose whether to break the new rack or ask Player ${game.pendingBreak.offender + 1} to break again.`;
+  $('break-detail').textContent = `No numbered ball was pocketed and fewer than ${isNine() ? 'three' : 'four'} object balls reached rails. Player ${game.pendingBreak.chooser + 1}, choose whether to break the new rack or ask Player ${game.pendingBreak.offender + 1} to break again.`;
   $('break-self').textContent = `Player ${game.pendingBreak.chooser + 1} breaks`;
   $('break-again').textContent = `Player ${game.pendingBreak.offender + 1} breaks again`;
   openDialog('break-dialog');
 }
 
 function showPushChoice() {
-  if (mode !== 'nine' || !game.pendingPush) return;
+  if (!isNine() || !game.pendingPush) return;
   $('push-detail').textContent = `Player ${game.pendingPush.chooser + 1}, take the table as it lies or pass the shot back to Player ${game.pendingPush.pusher + 1}. The next shot must hit ${game.lowestBall} first.`;
   openDialog('nine-push-dialog');
 }
@@ -682,7 +688,7 @@ function takeShot(power = shotPower) {
 function startMatchRack(breaker) {
   cancelGestures();
   for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
-  physics.reset(mode === 'nine' ? 'nine' : 'eight');game.reset(breaker);view.resetBalls(physics.balls);
+  physics.reset(GAME_MODES[mode].rack);game.reset(breaker);view.resetBalls(physics.balls);
   warningPlayer = null;
   shotCall = { ball: null, pocket: null, safety: false };shotTracker = null;lastRuleMessage = '';
   setAimAngle(0);inShot = false;shotBalls = [];settleTime = 0;aimDirty = true;
@@ -704,8 +710,9 @@ function updateCallDraft() {
 }
 
 function openCallDialog() {
-  if (mode !== 'match' || !canAimNow() || game.isBreak) return;
-  const targets = game.targets();
+  if (!isCallPocket() || !canAimNow() || game.isBreak) return;
+  const targets = game.callTargets();
+  $('call-description').textContent = isNine() ? `Pick any remaining ball and its pocket, including combinations. You must still hit ${game.lowestBall} first.` : 'Pick one ball and its pocket. Pocket labels P1–P6 are shown on the table. Banks and combinations need no extra details.';
   callDraft = { ball: targets.includes(shotCall.ball) ? shotCall.ball : targets[0], pocket: shotCall.pocket ?? null, safety: false };
   const balls = $('call-balls');balls.replaceChildren();
   for (const id of targets) {
@@ -800,6 +807,10 @@ $('menu-button').addEventListener('click', openMainMenu);
 $('menu-continue').addEventListener('click', () => enterMode(mode));
 $('menu-match').addEventListener('click', () => enterMode('match'));
 $('menu-nine').addEventListener('click', () => enterMode('nine'));
+$('menu-call-pocket').addEventListener('click', () => openDialog('call-mode-dialog'));
+for (const [id, selectedMode] of [['call-mode-eight', 'call-eight'], ['call-mode-nine', 'call-nine']]) $(id).addEventListener('click', () => {
+  $('call-mode-dialog').close();enterMode(selectedMode);
+});
 $('menu-playground').addEventListener('click', () => enterMode('playground'));
 $('menu-settings').addEventListener('click', () => openDialog('settings-dialog'));
 $('menu-help').addEventListener('click', () => openDialog('help-dialog'));
@@ -826,11 +837,11 @@ $('match-place').addEventListener('click', () => {
 });
 $('match-call').addEventListener('click', openCallDialog);
 $('confirm-call').addEventListener('click', () => {
-  if (mode !== 'match' || !game.callReady({ ...callDraft, safety: false })) return;
+  if (!isCallPocket() || !game.callReady({ ...callDraft, safety: false })) return;
   shotCall = { ...callDraft, safety: false };$('call-dialog').close();aimDirty = true;updateUI();
 });
 $('match-safety').addEventListener('click', () => {
-  if (mode !== 'match' || !canAimNow() || game.isBreak) return;
+  if (!isCallPocket() || !canAimNow() || game.isBreak) return;
   cancelGestures();shotCall = { ball: null, pocket: null, safety: !shotCall.safety };aimDirty = true;updateUI();
 });
 $('match-break-choice').addEventListener('click', showBreakChoice);
@@ -852,7 +863,7 @@ $('confirm-concede').addEventListener('click', () => {
   if (result) { showWinner(result);aimDirty = true; }
 });
 $('match-stalemate').addEventListener('click', () => {
-  if (mode !== 'match' || inShot || !game.stalemateEligible) return;
+  if (!isMatch() || isNine() || inShot || !game.stalemateEligible) return;
   $('settings-dialog').close();$('stalemate-p1').checked = $('stalemate-p2').checked = false;
   $('confirm-stalemate').disabled = true;openDialog('stalemate-dialog');
 });
@@ -860,21 +871,21 @@ for (const id of ['stalemate-p1', 'stalemate-p2']) $(id).addEventListener('chang
   $('confirm-stalemate').disabled = !$('stalemate-p1').checked || !$('stalemate-p2').checked;
 });
 $('confirm-stalemate').addEventListener('click', () => {
-  if (mode === 'match' && game.stalemateEligible && $('stalemate-p1').checked && $('stalemate-p2').checked) startMatchRack(1 - game.breaker);
+  if (isMatch() && !isNine() && game.stalemateEligible && $('stalemate-p1').checked && $('stalemate-p2').checked) startMatchRack(1 - game.breaker);
 });
 $('nine-push').addEventListener('click', () => {
-  if (mode !== 'nine' || !canAimNow() || !game.pushAvailable) return;
+  if (!isNine() || !canAimNow() || !game.pushAvailable) return;
   cancelGestures();shotCall = { push: !shotCall.push };aimDirty = true;updateUI();
 });
 $('nine-push-choice').addEventListener('click', showPushChoice);
 $('nine-push-dialog').addEventListener('cancel', (event) => event.preventDefault());
 for (const [id, take] of [['nine-take', true], ['nine-pass', false]]) $(id).addEventListener('click', () => {
-  if (mode !== 'nine' || !game.choosePush(take)) return;
+  if (!isNine() || !game.choosePush(take)) return;
   $('nine-push-dialog').close();aimDirty = true;updateUI();
   toast(`Player ${game.currentPlayer + 1}, hit ${game.lowestBall} first.`);
 });
 $('nine-warning-confirm').addEventListener('click', () => {
-  if (mode !== 'nine' || inShot || warningPlayer === null) return;
+  if (!isNine() || inShot || warningPlayer === null) return;
   game.acknowledgeWarning(warningPlayer);
   $('nine-warning-dialog').close();updateUI();
 });
@@ -968,6 +979,6 @@ try {
   aimWheel.setDisabled(true);
   $('spin-button').disabled = $('elevation-button').disabled = true;
   $('restart-button').disabled = true;
-  $('menu-match').disabled = $('menu-nine').disabled = $('menu-playground').disabled = true;
+  $('menu-match').disabled = $('menu-nine').disabled = $('menu-call-pocket').disabled = $('menu-playground').disabled = true;
   $('menu-status').textContent = 'The table needs WebGL. Open this page in a current browser with hardware acceleration enabled.';
 }
