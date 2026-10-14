@@ -4,6 +4,7 @@ import './playground.css';
 import './spin.css';
 import './match.css';
 import './responsive-table.css';
+import './pwa.js';
 import { PoolPhysics, BALL_COLORS, POCKETS } from './physics.js';
 import { TableView } from './table.js';
 import { GameAudio } from './audio.js';

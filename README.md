@@ -26,6 +26,18 @@ In repository **Settings → Pages**, set **Source** to **GitHub Actions**. The 
 
 Vite uses relative asset URLs so JavaScript and CSS load correctly under the repository subpath. Publish the built `dist/` output; the source `index.html` depends on Vite and cannot run directly on a static host.
 
+### Install on a phone or tablet
+
+The production build includes a web app manifest, 192/512-pixel install icons, an Apple touch icon, and an offline service worker scoped to the GitHub Pages repository path.
+
+- **Android / Chrome:** open the Pages URL directly in Chrome, let it finish loading, then use **⋮ → Add to Home screen → Install**. It launches in its own app window rather than as a browser shortcut.
+- **iPhone / iPad:** open the URL in Safari, then **Share → Add to Home Screen** (enable **Open as Web App** if shown).
+- After the first successful online load and service-worker installation, the game can reopen offline. Online fonts may fall back to system fonts. Playground saves stay in the same browser storage; installing does not clear them.
+- Updates download in the background and activate after existing game tabs/app windows close. Close all Pocket Club windows and reopen to use a newly deployed build.
+- Install/offline support requires HTTPS or localhost and is enabled for production builds, not the Vite development server. To test locally, run `npm run build` then `npm run preview`.
+
+Icons are committed assets; `python3 scripts/generate-icons.py` regenerates them with Pillow. The Vite build generates `sw.js` with the current hashed assets and a versioned cache, so another GitHub Pages project’s caches are not affected.
+
 ## Play
 
 The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, **Call Pocket**, or **Playground**. **Call Pocket** opens a dialog to choose **8-ball** or **9-ball** with called-shot rules; the regular modes need no pocket calls. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. All four match variants and Playground keep independent tables and state while the page remains open, including shots paused in motion. Reloading the page starts a fresh session; Playground’s five saved setup slots remain available.
