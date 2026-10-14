@@ -5,7 +5,7 @@ import { AimWheel, TableAimControl, normalizeAngle } from '../src/aim-controls.j
 import { ShotControl } from '../src/shot-control.js';
 import { TableView } from '../src/table.js';
 import { TABLE } from '../src/table-geometry.js';
-import { controlDockLayout } from '../src/control-layout.js';
+import { controlDockLayout, tableControlLayout, BOTTOM_CONTROLS_HEIGHT } from '../src/control-layout.js';
 import { PocketHistory } from '../src/pocket-history.js';
 import { PoolPhysics } from '../src/physics.js';
 import { ControlElement } from './helpers/control-element.js';
@@ -118,6 +118,34 @@ test('cancelled or interrupted aiming stops tracking and secondary fingers canno
   wheelElement.send('pointermove', { clientY: 200 });
   assert.equal(wheel.active, false);
   assert.equal(state.angle, 0);
+});
+
+test('bottom-bar fine aim follows horizontal swipes and rotation cancels an active drag', () => {
+  const { wheel, wheelElement, state } = controls();
+  wheel.setHorizontal(true);
+  assert.equal(wheelElement.attributes.get('aria-orientation'), 'horizontal');
+  wheelElement.send('pointerdown');wheelElement.send('pointermove', { clientX: 160, clientY: 120 });
+  assert.ok(Math.abs(state.angle - 0.03) < 1e-12);
+  wheelElement.send('pointerup', { clientX: 160, clientY: 120 });
+  assert.deepEqual(state.shots, []);
+  wheelElement.send('pointerdown');wheel.setHorizontal(false);
+  wheelElement.send('pointermove', { clientX: 220 });
+  assert.equal(wheel.active, false);assert.ok(Math.abs(state.angle - 0.03) < 1e-12);
+  wheelElement.send('pointerdown');wheelElement.send('pointerup', { clientY: 140 });
+  assert.ok(Math.abs(state.angle - 0.05) < 1e-12);
+});
+
+test('adaptive controls choose the larger proportional table without sacrificing portrait tablet height', () => {
+  for (const [width, height, expected] of [[428, 783, 'bottom'], [400, 751, 'bottom'], [806, 386, 'side'], [774, 358, 'side'], [748, 877, 'side'], [1004, 674, 'bottom']]) {
+    const { controls, horizontal } = tableControlLayout({ width, height });
+    assert.equal(controls, expected);
+    const tableWidth = (horizontal ? TABLE.frameLength : TABLE.frameWidth) + 0.3;
+    const tableHeight = (horizontal ? TABLE.frameWidth : TABLE.frameLength) + 0.3;
+    const oldScale = Math.min((width - 82) / tableWidth, height / tableHeight);
+    const scale = controls === 'side' ? oldScale : Math.min(width / tableWidth, (height - BOTTOM_CONTROLS_HEIGHT) / tableHeight);
+    assert.ok(scale >= oldScale);
+    if (controls === 'bottom') assert.ok(scale > oldScale * 1.05);
+  }
 });
 
 function viewAt(width, height, left = 0, top = 0) {

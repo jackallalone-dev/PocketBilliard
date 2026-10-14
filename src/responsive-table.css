@@ -1,0 +1,73 @@
+/* Picked by the available table scale, not a phone/tablet breakpoint. */
+.game[data-controls="bottom"] #canvas-container { inset: 0 0 var(--bottom-controls-height, 90px); }
+.game[data-controls="bottom"] .control-dock {
+  left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 64px;
+  transform: none; display: grid; grid-template-columns: 44px 44px minmax(0, 1fr) 76px; gap: 6px;
+}
+.game[data-controls="bottom"] .spin-button { width: 44px; height: 64px; min-height: 44px; font-size: 7px; }
+.game[data-controls="bottom"] .shot-power { min-height: 0; border-radius: 12px; cursor: ew-resize; }
+.game[data-controls="bottom"] .power-label { position: absolute; top: 8px; left: 10px; margin: 0; font-size: 8px; }
+.game[data-controls="bottom"] .shot-power output { position: absolute; top: 4px; right: 9px; margin: 0; font-size: 13px; }
+.game[data-controls="bottom"] .power-track { inset: 27px 10px 13px; background: linear-gradient(to bottom, transparent 40%, #101c13 40% 60%, transparent 60%); }
+.game[data-controls="bottom"] .power-track::after { top: auto; bottom: -9px; left: calc(50% - 5px); font-size: 6px; }
+.game[data-controls="bottom"] .power-fill { top: 40%; left: 0; width: calc(12px + (100% - 24px) * var(--shot-power)); height: 20%; }
+.game[data-controls="bottom"] .power-thumb { top: 50%; left: calc((100% - 24px) * var(--shot-power)); width: 24px; height: 26px; transform: translateY(-50%); }
+.game[data-controls="bottom"] .power-hint { bottom: 2px; right: 6px; left: auto; font-size: 7px; }
+.game[data-controls="bottom"] .wheel-label { font-size: 7px; }
+.game[data-controls="bottom"] .aim-wheel { width: auto; min-height: 44px; cursor: ew-resize; }
+.game[data-controls="bottom"] .wheel-drum { inset: 21px 7px 18px; background: repeating-linear-gradient(to right, #809279 0 1px, #30422e 1px 6px); background-position-x: var(--wheel-offset); box-shadow: inset 9px 0 8px #07100ce0, inset -9px 0 8px #07100ce0; }
+.game[data-controls="bottom"] .wheel-marker { top: 19px; bottom: 16px; left: 50%; right: auto; width: 1px; height: auto; }
+.game[data-controls="bottom"][data-power-side="left"] .control-dock { grid-template-columns: 76px minmax(0, 1fr) 44px 44px; }
+.game[data-controls="bottom"][data-power-side="left"] .aim-wheel { order: -3; }
+.game[data-controls="bottom"][data-power-side="left"] .shot-power { order: -2; }
+.game[data-controls="bottom"][data-power-side="left"] .elevation-button { order: -1; }
+.game[data-controls="bottom"] .pocketed-panel { left: 0; right: 0; top: auto; bottom: 68px; height: 22px; width: auto; transform: none; flex-direction: row; gap: 8px; padding: 1px 8px; border-radius: 8px; }
+.game[data-controls="bottom"] .pocketed-list { flex: 1; width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+.game[data-controls="bottom"] .pocketed-list .tray-ball { width: 16px; height: 16px; }
+.game[data-controls="bottom"] #pocketed-empty { margin-right: auto; }
+
+@media (max-width: 599px) {
+  .app { gap: 4px; padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); }
+  .game { gap: 4px; }
+  .table-info { padding: 0; }
+  .match-actions { grid-template-rows: 18px 32px; gap: 2px; margin-top: 2px; }
+  .match-actions > span { max-height: 18px; line-height: 18px; -webkit-line-clamp: 1; }
+}
+
+/* Short, older phones still need enough height for a usable power pull. */
+@media (orientation: landscape) and (max-width: 599px) {
+  .header .wordmark > span:not(.logo-ball) { display: none; }
+  .game { grid-template-rows: auto minmax(0, 1fr); }
+  .scoreboard { position: absolute; top: max(4px, env(safe-area-inset-top)); left: 44px; width: calc(100% - 218px); max-width: none; z-index: 2; }
+  .player-card { padding: 4px 6px; }
+  .player-top h2 { font-size: 9px; }
+  .player-group { display: none; }
+  .ball-tray { margin-top: 3px; gap: 3px; }
+  .table-info { grid-row: 1; }
+  .table-area { grid-row: 2; }
+  .turn-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .match-actions { grid-template-columns: minmax(0, 1fr) 260px; grid-template-rows: 32px; margin: 0; }
+  .match-actions > span { max-height: 32px; line-height: 14px; -webkit-line-clamp: 2; }
+  .game[data-mode="playground"] { grid-template-rows: auto minmax(0, 1fr); }
+  .game[data-mode="playground"] .table-info { display: none; }
+  .game[data-mode="playground"] .playground-bar { flex-wrap: nowrap; }
+  .playground-actions { width: auto; flex: 1; gap: 4px; }
+  .playground-actions button { font-size: 9px; padding: 7px 4px; }
+  .playground-tabs button { font-size: 10px; padding: 7px 8px; }
+}
+
+/* Wide phones have spare space at the ends, but very little vertical space.
+   Put match actions in that space and give their old row back to the table. */
+@media (orientation: landscape) and (min-width: 740px) and (min-aspect-ratio: 2/1) {
+  .game:not([data-mode="playground"]) { grid-template-columns: 124px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 6px; }
+  .game:not([data-mode="playground"]) .table-area { grid-column: 2; grid-row: 1; }
+  .game:not([data-mode="playground"]) .table-info { grid-column: 1; grid-row: 1; width: 100%; padding: 4px 0; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+  .game:not([data-mode="playground"]) .turn-status { position: static; width: auto; height: auto; overflow: visible; clip-path: none; flex-wrap: wrap; }
+  .game:not([data-mode="playground"]) #turn-status { white-space: normal; }
+  .game:not([data-mode="playground"]) .shot-count { display: none; }
+  .match-actions { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin: 0; }
+  .match-actions > span { display: block; max-height: none; font-size: 10px; line-height: 1.5; }
+  .game .match-buttons { display: flex; flex-direction: column; height: auto; gap: 6px; }
+  .match-actions button { min-height: 40px; height: auto; white-space: normal; padding: 9px 5px; }
+  .match-placement-slot { display: contents; }
+}

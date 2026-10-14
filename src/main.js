@@ -3,13 +3,14 @@ import './layout.css';
 import './playground.css';
 import './spin.css';
 import './match.css';
+import './responsive-table.css';
 import { PoolPhysics, BALL_COLORS, POCKETS } from './physics.js';
 import { TableView } from './table.js';
 import { GameAudio } from './audio.js';
 import { ShotControl } from './shot-control.js';
 import { loadPowerSide, savePowerSide, loadAimAids, saveAimAids } from './settings.js';
 import { AimWheel, TableAimControl, normalizeAngle } from './aim-controls.js';
-import { controlDockLayout } from './control-layout.js';
+import { controlDockLayout, tableControlLayout, BOTTOM_CONTROLS_HEIGHT } from './control-layout.js';
 import { PocketHistory } from './pocket-history.js';
 import { Playground } from './playground.js';
 import { SavedSetups } from './saved-setups.js';
@@ -214,8 +215,23 @@ function cancelGestures() {
 
 function layoutControlDock(frame) {
   const area = $('table-area').getBoundingClientRect();
+  if (!area.width || !area.height) return;
+  const gameElement = document.querySelector('.game');
+  const { controls, horizontal } = tableControlLayout(area);
+  const orientation = horizontal ? 'landscape' : 'portrait';
+  if (gameElement.dataset.controls !== controls || container.dataset.tableOrientation !== orientation) {
+    cancelGestures();
+    gameElement.dataset.controls = controls;
+    gameElement.style.setProperty('--bottom-controls-height', `${BOTTOM_CONTROLS_HEIGHT}px`);
+    container.dataset.tableOrientation = orientation;
+    shotControl.setHorizontal(controls === 'bottom');aimWheel.setHorizontal(controls === 'bottom');
+    $('aim-instructions').textContent = `Drag the wheel ${controls === 'bottom' ? 'left or right' : 'up or down'} to adjust your aim precisely. Arrow keys also adjust the angle. This control does not shoot.`;
+    $('power-instructions').textContent = `Drag ${controls === 'bottom' ? 'right' : 'down'} to increase power and release to shoot. Halfway is 100 percent; the full pull is 200 percent. Return to the starting point or move ${controls === 'bottom' ? 'up or down' : 'sideways'} to cancel. Use arrow keys to set power, End for maximum, and Enter or Space to shoot.`;
+    view?.resize();return;
+  }
+  if (controls === 'bottom') { updatePlacementOverlay();updatePocketLabels();return; }
   const canvas = container.getBoundingClientRect();
-  const side = document.querySelector('.game').dataset.powerSide;
+  const side = gameElement.dataset.powerSide;
   const dock = $('control-dock');
   const layout = controlDockLayout(frame, canvas, area, side, dock.offsetWidth);
   dock.style.setProperty('--dock-left', `${layout.left}px`);
@@ -501,6 +517,7 @@ function renderPocketHistory() {
   }
   $('pocketed-empty').hidden = pocketHistory.ids.length > 0;
   list.scrollTop = list.scrollHeight;
+  list.scrollLeft = list.scrollWidth;
 }
 renderPocketHistory();
 

@@ -1,3 +1,18 @@
+import { TABLE } from './table-geometry.js';
+
+export const BOTTOM_CONTROLS_HEIGHT = 90;
+
+// Choose by the ball/table scale we can actually display, rather than device
+// names. A tall tablet keeps side controls; a narrow phone gains a bottom bar.
+export function tableControlLayout(area) {
+  const horizontal = area.width > area.height;
+  const width = (horizontal ? TABLE.frameLength : TABLE.frameWidth) + 0.3;
+  const height = (horizontal ? TABLE.frameWidth : TABLE.frameLength) + 0.3;
+  const sideScale = Math.min(Math.max(0, area.width - 82) / width, area.height / height);
+  const bottomScale = Math.min(area.width / width, Math.max(0, area.height - BOTTOM_CONTROLS_HEIGHT) / height);
+  return { horizontal, controls: bottomScale > sideScale * 1.02 ? 'bottom' : 'side' };
+}
+
 export function controlDockLayout(frame, canvas, area, side, width = 44) {
   const gap = 6;
   const offsetX = canvas.left - area.left;

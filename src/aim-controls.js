@@ -69,6 +69,7 @@ export class AimWheel {
     Object.assign(this, { element, canAim, getAngle, setAngle });
     this.drag = null;
     this.disabled = true;
+    this.horizontal = false;
     this.output = element.querySelector('output');
     element.addEventListener('pointerdown', (event) => this.start(event));
     element.addEventListener('pointermove', (event) => this.move(event));
@@ -89,6 +90,12 @@ export class AimWheel {
   }
 
   get active() { return this.drag !== null; }
+
+  setHorizontal(horizontal) {
+    if (this.horizontal === horizontal) return;
+    this.cancel();this.horizontal = horizontal;
+    this.element.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
+  }
 
   render(angle) {
     const degrees = ((angle * 180 / Math.PI) % 360 + 360) % 360;
@@ -114,7 +121,7 @@ export class AimWheel {
   start(event) {
     if (event.isPrimary === false || event.button !== 0 || this.active || this.disabled || !this.canAim()) return;
     event.preventDefault();
-    this.drag = { id: event.pointerId, y: event.clientY };
+    this.drag = { id: event.pointerId, position: this.horizontal ? event.clientX : event.clientY };
     this.element.classList.toggle('adjusting', true);
     this.element.focus({ preventScroll: true });
     this.element.setPointerCapture(event.pointerId);
@@ -124,8 +131,9 @@ export class AimWheel {
     if (!this.drag || event.pointerId !== this.drag.id) return;
     if (this.disabled || !this.canAim()) { this.cancel();return; }
     event.preventDefault();
-    const delta = event.clientY - this.drag.y;
-    this.drag.y = event.clientY;
+    const position = this.horizontal ? event.clientX : event.clientY;
+    const delta = position - this.drag.position;
+    this.drag.position = position;
     this.adjust(delta * FINE_AIM_STEP);
   }
 

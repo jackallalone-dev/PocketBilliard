@@ -450,7 +450,7 @@ export class TableView {
     const aspect = width / height;
     // A strictly vertical view in both orientations. Only the screen's up
     // direction changes; the camera never tilts or foreshortens the table.
-    const horizontal = aspect >= 1;
+    const horizontal = this.container.dataset?.tableOrientation ? this.container.dataset.tableOrientation === 'landscape' : aspect >= 1;
     this.camera.position.set(0, 30, 0);
     this.camera.up.set(horizontal ? 1 : 0, 0, horizontal ? 0 : -1);
     this.camera.lookAt(0, 0, 0);

@@ -101,6 +101,25 @@ test('keyboard power adjustment, firing, and escape cancellation work without po
   assert.equal(shots.length, 1);
 });
 
+test('bottom-bar power charges rightwards and cancels perpendicular movement or a layout change', () => {
+  const { element, control, shots } = setup();
+  element.parts['.power-track'].getBoundingClientRect = () => ({ width: 204, height: 24 });
+  control.setHorizontal(true);
+  assert.equal(element.attributes.get('aria-orientation'), 'horizontal');
+  element.send('pointerdown');element.send('pointermove', { clientX: 190 });
+  assert.equal(control.value, 1);assert.equal(shots.length, 0);
+  element.send('pointerup', { clientX: 190 });assert.deepEqual(shots, [1]);
+  element.send('pointerdown');element.send('pointerup', { clientX: 280 });assert.deepEqual(shots, [1, 2]);
+  for (const finish of [{ clientX: 200, clientY: 200 }, { clientX: 100 }, { clientX: 104 }]) {
+    element.send('pointerdown');element.send('pointermove', { clientX: 220 });element.send('pointerup', finish);
+    assert.equal(shots.length, 2, 'off-axis release, returning to start, and finger wobble must not fire');
+  }
+  element.send('pointerdown');element.send('pointermove', { clientX: 220 });
+  control.setHorizontal(false);element.send('pointerup', { clientY: 190 });
+  assert.equal(shots.length, 2);assert.equal(control.value, 0);assert.equal(control.charging, false);
+  assert.equal(element.attributes.get('aria-orientation'), 'vertical');
+});
+
 test('left/right preference survives a reload and invalid or unavailable storage falls back safely', () => {
   const saved = new Map();
   const storage = { getItem: (key) => saved.get(key), setItem: (key, value) => saved.set(key, value) };

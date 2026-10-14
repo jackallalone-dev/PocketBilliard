@@ -14,6 +14,7 @@ export class ShotControl {
     this.drag = null;
     this.disabled = true;
     this.disabledLabel = 'WAIT';
+    this.horizontal = false;
     element.addEventListener('pointerdown', (event) => this.start(event));
     element.addEventListener('pointermove', (event) => this.move(event));
     element.addEventListener('pointerup', (event) => this.release(event));
@@ -25,6 +26,14 @@ export class ShotControl {
   }
 
   get charging() { return this.drag !== null; }
+
+  setHorizontal(horizontal) {
+    if (this.horizontal === horizontal) return;
+    this.cancel();this.horizontal = horizontal;
+    this.element.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
+    this.element.setAttribute('aria-label', `Shot power, up to 200 percent. Drag ${horizontal ? 'right' : 'down'} and release to shoot.`);
+    this.render();
+  }
 
   setPower(value) {
     this.value = Math.max(0, Math.min(MAX_SHOT_POWER, value));
@@ -44,13 +53,13 @@ export class ShotControl {
     this.element.style.setProperty('--shot-power', this.value / MAX_SHOT_POWER);
     this.element.setAttribute('aria-valuemax', String(MAX_SHOT_POWER * 100));
     this.element.setAttribute('aria-valuenow', String(percent));
-    this.element.setAttribute('aria-valuetext', `${percent} percent. ${this.drag?.cancelled ? 'Release to cancel.' : this.drag && this.value > 0 ? 'Release to shoot.' : 'Pull down to charge.'}`);
+    this.element.setAttribute('aria-valuetext', `${percent} percent. ${this.drag?.cancelled ? 'Release to cancel.' : this.drag && this.value > 0 ? 'Release to shoot.' : `Pull ${this.horizontal ? 'right' : 'down'} to charge.`}`);
     this.element.setAttribute('aria-disabled', String(this.disabled));
     this.element.classList.toggle('charging', this.charging);
     this.element.classList.toggle('boosted', this.value > 1);
     this.element.classList.toggle('cancelled', !!this.drag?.cancelled);
     this.output.innerHTML = `${percent}<span>%</span>`;
-    this.hint.textContent = this.disabled ? this.disabledLabel : this.drag?.cancelled ? 'CANCEL' : this.drag && this.value > 0 ? 'RELEASE' : this.value > 0 ? 'SPACE ↵' : 'PULL ↓';
+    this.hint.textContent = this.disabled ? this.disabledLabel : this.drag?.cancelled ? 'CANCEL' : this.drag && this.value > 0 ? 'RELEASE' : this.value > 0 ? 'SPACE ↵' : this.horizontal ? 'PULL →' : 'PULL ↓';
   }
 
   start(event) {
@@ -60,7 +69,7 @@ export class ShotControl {
     this.element.focus({ preventScroll: true });
     this.drag = {
       id: event.pointerId, x: event.clientX, y: event.clientY, cancelled: false,
-      travel: Math.max(60, Math.min(180, this.track.getBoundingClientRect().height - 24)),
+      travel: Math.max(60, Math.min(180, this.track.getBoundingClientRect()[this.horizontal ? 'width' : 'height'] - 24)),
     };
     this.element.setPointerCapture(event.pointerId);
     this.setPower(0);
@@ -69,8 +78,8 @@ export class ShotControl {
   move(event) {
     if (!this.drag || event.pointerId !== this.drag.id) return;
     event.preventDefault();
-    this.drag.cancelled = Math.abs(event.clientX - this.drag.x) > 80;
-    const distance = Math.max(0, event.clientY - this.drag.y);
+    this.drag.cancelled = Math.abs(this.horizontal ? event.clientY - this.drag.y : event.clientX - this.drag.x) > 80;
+    const distance = Math.max(0, this.horizontal ? event.clientX - this.drag.x : event.clientY - this.drag.y);
     this.setPower(distance < 8 ? 0 : distance / this.drag.travel * MAX_SHOT_POWER);
   }
 
