@@ -12,18 +12,15 @@
     <section id="main-menu" class="main-menu" aria-labelledby="menu-title">
       <div class="menu-content">
         <div class="menu-brand"><span class="logo-ball">8</span><span>pocketclub.</span></div>
-        <span class="eyebrow">YOUR TABLE. YOUR SHOT.</span>
-        <h1 id="menu-title">Make your<br />next shot.</h1>
-        <p class="menu-intro">A little friendly competition. A little room to experiment.</p>
+        <h1 id="menu-title">Choose your <br />gamemode.</h1>
         <button id="menu-continue" class="primary-button menu-continue" hidden>Continue your game <span>↗</span></button>
         <div class="menu-modes">
-          <button id="menu-match" class="menu-mode"><span class="menu-mode-icon">01 / 02</span><strong>Two-player 8-ball</strong><span>Sink the 8 last. No pocket calls needed.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
-          <button id="menu-nine" class="menu-mode"><span class="menu-mode-icon">09</span><strong>Two-player 9-ball</strong><span>Hit the lowest first. No pocket calls needed.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
-          <button id="menu-call-pocket" class="menu-mode" aria-haspopup="dialog" aria-controls="call-mode-dialog"><span class="menu-mode-icon">◎</span><strong>Call Pocket</strong><span>Choose 8-ball or 9-ball. Call your ball and pocket.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
-          <button id="menu-playground" class="menu-mode"><span class="menu-mode-icon">✳</span><strong>Playground</strong><span>Arrange the balls. Build a trick shot. Try again.</span><span class="menu-arrow" aria-hidden="true">↗</span></button>
+          <button id="menu-match" class="menu-mode"><span class="menu-mode-icon menu-ball menu-ball-eight" aria-hidden="true"><span>8</span></span><strong>Pass n' Play 8-ball</strong><span class="menu-arrow" aria-hidden="true">↗</span></button>
+          <button id="menu-nine" class="menu-mode"><span class="menu-mode-icon menu-ball menu-ball-nine" aria-hidden="true"><span>9</span></span><strong>Pass n' Play 9-ball</strong><span class="menu-arrow" aria-hidden="true">↗</span></button>
+          <button id="menu-call-pocket" class="menu-mode" aria-haspopup="dialog" aria-controls="call-mode-dialog"><span class="menu-mode-icon menu-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg></span><strong>Call Pocket</strong><span class="menu-arrow" aria-hidden="true">↗</span></button>
+          <button id="menu-playground" class="menu-mode"><span class="menu-mode-icon menu-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/><circle cx="12" cy="10" r="1.6"/><circle cx="8.5" cy="16" r="1.6"/><circle cx="15.5" cy="16" r="1.6"/></svg></span><strong>Playground</strong><span class="menu-arrow" aria-hidden="true">↗</span></button>
         </div>
         <div class="menu-links"><button id="menu-settings" class="text-button">Settings</button><span>·</span><button id="menu-help" class="text-button">How to play</button></div>
-        <p id="menu-status" class="menu-status" role="status">3D pool, right in your browser.</p>
       </div>
     </section>
     <main class="app" id="app" hidden>
@@ -112,12 +109,12 @@
     <dialog id="call-mode-dialog" class="modal small-modal" aria-labelledby="call-mode-title" aria-describedby="call-mode-description">
       <button class="modal-close icon-button" data-close="call-mode-dialog" aria-label="Close Call Pocket choices">×</button>
       <span class="eyebrow">CHOOSE YOUR GAME</span><h1 id="call-mode-title">Call Pocket.</h1>
-      <p id="call-mode-description" class="modal-intro">Call a ball and pocket before each shot after the break, or declare Safety. Each choice keeps its own match.</p>
+      <p id="call-mode-description" class="modal-intro">Choose gamemode</p>
       <div class="break-options">
         <button id="call-mode-eight" class="primary-button">8-ball <span>↗</span></button>
         <button id="call-mode-nine" class="primary-button">9-ball <span>↗</span></button>
       </div>
-      <p class="rules-note">8-ball: clear your group, then make the called 8. 9-ball: hit the lowest first; combinations can call any ball. An uncalled or wrong-pocket 9 is re-spotted. Breaks and 9-ball push-outs do not need a pocket call.</p>
+      <br>
       <button class="text-button" data-close="call-mode-dialog">Back to modes</button>
     </dialog>
     <dialog id="help-dialog" class="modal">

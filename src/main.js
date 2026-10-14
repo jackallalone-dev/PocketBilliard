@@ -980,5 +980,7 @@ try {
   $('spin-button').disabled = $('elevation-button').disabled = true;
   $('restart-button').disabled = true;
   $('menu-match').disabled = $('menu-nine').disabled = $('menu-call-pocket').disabled = $('menu-playground').disabled = true;
-  $('menu-status').textContent = 'The table needs WebGL. Open this page in a current browser with hardware acceleration enabled.';
+  const status = document.createElement('p');status.className = 'menu-status';status.setAttribute('role', 'status');
+  status.textContent = 'The table needs WebGL. Open this page in a current browser with hardware acceleration enabled.';
+  document.querySelector('.menu-content').appendChild(status);
 }
