@@ -19,6 +19,22 @@ test('balls roll through each open mouth into the recessed pocket without an inv
   }
 });
 
+test('pocket holes sit back in the rails behind each mouth line, within WPA shelf depths', () => {
+  const inch = TABLE.width / 50, X = TABLE.width / 2, Z = TABLE.length / 2;
+  const mouth = 4.5 * inch / Math.SQRT2;
+  for (const p of POCKETS) {
+    const corner = p.z !== 0;
+    // Distance from the mouth line (between jaw noses) to the nearest edge of the hole.
+    const shelf = corner
+      ? (Math.abs(p.x) + Math.abs(p.z) - (X + Z - mouth)) / Math.SQRT2 - p.radius
+      : Math.abs(p.x) - X - p.radius;
+    const [min, max] = corner ? [1, 2.25] : [0, 0.375];
+    assert.ok(shelf >= min * inch - 1e-9 && shelf <= max * inch + 1e-9, `shelf ${shelf / inch} in`);
+    assert.ok(Math.abs(p.x) + p.radius + 0.07 < TABLE.frameWidth / 2, 'the hole stays inside the rail');
+    if (corner) assert.ok(Math.abs(p.z) + p.radius + 0.07 < TABLE.frameLength / 2);
+  }
+});
+
 test('a shot grazing a side-pocket cushion tip rebounds instead of passing through it', () => {
   const events = [];
   const physics = new PoolPhysics((event) => events.push(event));
@@ -90,13 +106,14 @@ test('the actual 3D meshes leave the cloth and recessed pocket holes unobstructe
     for (const p of POCKETS) {
       assert.ok(heightAt(p.x, p.z) < -0.1, 'pockets must be real openings down to a recessed well');
     }
-    assert.ok(heightAt(4.2, 0) < 0.025, 'the side-pocket mouth must be open');
+    assert.ok(Math.abs(heightAt(4.2, 0) - TABLE.clothHeight) < 0.001, 'the bed in front of the side pocket stays flat cloth');
+    assert.ok(heightAt(4.45, 0) < -0.1, 'the side-pocket mouth must be open between the jaws');
     assert.ok(heightAt(4.12, 8.35) < 0.04, 'corner jaws must leave a diagonal entrance');
     assert.equal(view.scene.children.filter((mesh) => mesh.name === 'pocket-surround').length, 6);
     for (const side of [-1, 1]) {
-      assert.equal(surfaceAt(side * 4.98, 0).object.name, 'pocket-surround', 'side castings must be visible above the frame');
+      assert.equal(surfaceAt(side * 5.3, 0).object.name, 'pocket-surround', 'side castings must be visible above the frame');
       for (const end of [-1, 1]) {
-        assert.equal(surfaceAt(side * 4.95, end * 9).object.name, 'pocket-surround', 'corner castings must be visible above the frame');
+        assert.equal(surfaceAt(side * 5.2, end * 9.5).object.name, 'pocket-surround', 'corner castings must be visible above the frame');
       }
     }
   } finally {

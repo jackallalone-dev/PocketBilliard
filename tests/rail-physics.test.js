@@ -22,12 +22,13 @@ const run = (initial, dt = 1 / 240) => {
 };
 const energy = (b) => GRAVITY * b.y + 0.5 * (b.vx ** 2 + b.vy ** 2 + b.vz ** 2) + 0.2 * TABLE.radius ** 2 * (b.wx ** 2 + b.wy ** 2 + b.wz ** 2);
 
-test('the selected 9-foot rail has regulation nose height and a real 4 1/16-inch flat cap', () => {
+test('the selected 9-foot rail has regulation nose height, a real 5 1/16-inch flat cap, and a 114 × 64 inch outside', () => {
   const inch = TABLE.width / 50;
   assert.ok(Math.abs(TABLE.cushionNoseHeight / (TABLE.radius * 2) - 0.635) < 1e-12);
   assert.ok(Math.abs(TABLE.cushionDepth / inch - 1.9375) < 1e-12);
-  assert.ok(Math.abs((TABLE.railWidth - TABLE.cushionDepth) / inch - 4.0625) < 1e-12);
-  assert.ok(Math.abs((TABLE.frameWidth - TABLE.width) / 2 / inch - 6) < 1e-12);
+  assert.ok(Math.abs((TABLE.railWidth - TABLE.cushionDepth) / inch - 5.0625) < 1e-12);
+  assert.ok(Math.abs((TABLE.frameWidth - TABLE.width) / 2 / inch - 7) < 1e-12);
+  assert.ok(Math.abs(TABLE.frameLength / inch - 114) < 1e-9 && Math.abs(TABLE.frameWidth / inch - 64) < 1e-9);
   const slope = (TABLE.railTopHeight - TABLE.cushionNoseHeight) / TABLE.cushionDepth;
   assert.ok(Math.atan(slope) * 180 / Math.PI > 9 && Math.atan(slope) * 180 / Math.PI < 10);
 });

@@ -16,7 +16,7 @@ export class SpinView {
     this.environment = new THREE.Group();this.scene.add(this.environment);
     const balls = new Set(source.ballMeshes.values());
     for (const child of source.scene.children) {
-      if (child !== source.aimGroup && !balls.has(child)) {
+      if (child !== source.aimGroup && child !== source.targetMarkers && !balls.has(child)) {
         (child.isLight ? this.scene : this.environment).add(child.clone());
       }
     }

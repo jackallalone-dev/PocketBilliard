@@ -7,10 +7,11 @@ export const TABLE = Object.freeze({
   // WPA: 4–7.5 inch total rail, 1.875–2 inch covered cushion, nose at
   // 63.5% of ball diameter. The 1.75 inch cap height is our selected profile,
   // not a universal specification. It gives a ~9.4° cushion-top slope.
+  // 7 inch rails give the 114 × 64 inch outside size of a 9-foot table.
   cushionDepth: 1.9375 * INCH, cushionNoseHeight: 2.25 * 0.635 * INCH,
-  railWidth: 6 * INCH, railTopHeight: 1.75 * INCH,
+  railWidth: 7 * INCH, railTopHeight: 1.75 * INCH,
   clothHeight: 0.028, headSpot: 4.3, footSpot: -4.3,
-  frameWidth: 8.6 + 12 * INCH, frameLength: 17.2 + 12 * INCH, frameCornerRadius: 0.55,
+  frameWidth: 8.6 + 14 * INCH, frameLength: 17.2 + 14 * INCH, frameCornerRadius: 0.62,
 });
 const X = TABLE.width / 2;
 const Z = TABLE.length / 2;
@@ -19,14 +20,19 @@ const cornerMouth = 4.5 * INCH / Math.SQRT2;
 const sideMouth = 5 * INCH / 2;
 const cornerJaw = D / Math.tan(38 * Math.PI / 180); // 142° included angle.
 const sideJaw = D * Math.tan(14 * Math.PI / 180); // 104° included angle.
+// Holes sit back in the rails, behind the mouth lines, rather than cutting into
+// the bed: WPA shelf depth is 1–2.25 in at corners and 0–0.375 in at sides.
+const CORNER_SHELF = 1.5 * INCH, SIDE_SHELF = 0.1875 * INCH;
+const cornerOffset = (CORNER_SHELF + 0.43 - cornerMouth / Math.SQRT2) / Math.SQRT2;
+const sideOffset = SIDE_SHELF + 0.365;
 
 export const POCKETS = [
-  { x: -X - 0.14, z: -Z - 0.14, radius: 0.43, captureRadius: 0.34 },
-  { x: X + 0.14, z: -Z - 0.14, radius: 0.43, captureRadius: 0.34 },
-  { x: -X - 0.17, z: 0, radius: 0.365, captureRadius: 0.285 },
-  { x: X + 0.17, z: 0, radius: 0.365, captureRadius: 0.285 },
-  { x: -X - 0.14, z: Z + 0.14, radius: 0.43, captureRadius: 0.34 },
-  { x: X + 0.14, z: Z + 0.14, radius: 0.43, captureRadius: 0.34 },
+  { x: -X - cornerOffset, z: -Z - cornerOffset, radius: 0.43, captureRadius: 0.34 },
+  { x: X + cornerOffset, z: -Z - cornerOffset, radius: 0.43, captureRadius: 0.34 },
+  { x: -X - sideOffset, z: 0, radius: 0.365, captureRadius: 0.285 },
+  { x: X + sideOffset, z: 0, radius: 0.365, captureRadius: 0.285 },
+  { x: -X - cornerOffset, z: Z + cornerOffset, radius: 0.43, captureRadius: 0.34 },
+  { x: X + cornerOffset, z: Z + cornerOffset, radius: 0.43, captureRadius: 0.34 },
 ];
 
 export const CUSHIONS = [];

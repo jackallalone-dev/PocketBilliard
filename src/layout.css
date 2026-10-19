@@ -29,6 +29,34 @@
 .header .icon-button { width: 34px; height: 34px; }
 .header .text-button { min-height: 34px; padding: 0 6px; font-size: 10px; }
 .local-label, .table-meta, .table-caption, .footer { display: none; }
+#game-menu-button[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.game-menu-layer { position: fixed; inset: 0; z-index: 30; }
+.game-menu-layer[hidden] { display: none; }
+.game-menu {
+  position: absolute;
+  top: calc(max(4px, env(safe-area-inset-top)) + 42px);
+  right: max(10px, env(safe-area-inset-right));
+  width: 220px;
+  max-height: calc(100% - 56px);
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid #3b483f;
+  border-radius: 12px;
+  background: #18241c;
+  box-shadow: 0 14px 36px #000b;
+}
+.game-menu button { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: none; color: #e1e7da; font-size: 13px; text-align: left; }
+@media (hover: hover) { .game-menu button:hover { background: #ffffff0d; } }
+.game-menu button:active, .game-menu button:focus-visible { background: #ffffff14; outline: none; }
+.game-menu button:disabled { opacity: .4; }
+.game-menu svg { width: 18px; height: 18px; flex: none; color: var(--accent); }
+#sound-icon { display: grid; flex: none; }
+.menu-state { margin-left: auto; font-size: 10px; letter-spacing: 1px; color: #9fb19a; }
+#sound-button[aria-checked="true"] .menu-state { color: var(--accent); }
+#main-menu-button { margin-top: 4px; border-top: 1px solid #2c3a30; border-radius: 0 0 8px 8px; }
 
 .game {
   width: 100%;
@@ -90,7 +118,8 @@
   line-height: 14px;
   gap: 6px;
 }
-.turn-status { width: 100%; padding: 0; border: 0; font-size: 10px; line-height: 14px; gap: 6px; }
+.turn-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.game[data-mode="playground"] .table-info { display: none; }
 .shot-count { font-size: 7px; letter-spacing: 1px; }
 .pocketed-panel {
   position: absolute;
@@ -205,7 +234,6 @@
   .player-group { font-size: 6px; }
   .ball-tray { margin-top: 3px; gap: 3px; }
   .tray-ball { width: 10px; height: 10px; }
-  .turn-status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 }
 
 @media (orientation: landscape) and (min-width: 600px) and (max-width: 750px) {

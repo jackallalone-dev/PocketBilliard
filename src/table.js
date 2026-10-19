@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { TABLE, POCKETS, BALL_COLORS } from './physics.js';
 import { CUSHIONS, pocketSurroundPoints } from './table-geometry.js';
 import { GRAVITY } from './ball-motion.js';
@@ -13,6 +16,7 @@ import { cuePathPreview } from './aim-preview.js';
 const UP = new THREE.Vector3(0, 1, 0);
 const BALL_TEXTURE_ORIENTATION = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
 const BALL_ORIENTATION = new THREE.Quaternion();
+const TARGET_PULSE_SECONDS = 3.6, TARGET_PULSE_PERIOD = 0.9, TARGET_FADE_SECONDS = 0.6;
 
 function feltTexture() {
   const canvas = document.createElement('canvas');
@@ -94,6 +98,21 @@ function planShape(points) {
   return new THREE.Shape(points.map((p) => new THREE.Vector2(p.x, -p.z)));
 }
 
+// Screen-space widths: WebGL's native lines are a hairline 1 device pixel.
+function guideLine(color, opacity, width, dashed = false) {
+  const material = new LineMaterial({ color, transparent: true, opacity, linewidth: width, dashed, dashSize: 0.12, gapSize: 0.1, depthTest: false, depthWrite: false });
+  const line = new Line2(new LineGeometry(), material);
+  line.raycast = () => {}; // Decorative overlays; picking uses the aim plane.
+  setLinePoints(line, [new THREE.Vector3(), new THREE.Vector3(0, 0, 0.001)]);
+  return line;
+}
+
+function setLinePoints(line, points) {
+  line.geometry.dispose();
+  line.geometry = new LineGeometry().setPositions(points.flatMap((p) => [p.x, p.y, p.z]));
+  line.computeLineDistances();
+}
+
 function surfaceGeometry(faces) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(surfacePositions(faces), 3));
@@ -159,7 +178,8 @@ export class TableView {
     this.roundedSlab(TABLE.frameWidth + 0.07, TABLE.frameLength + 0.07, 0.58, 0.08, brass, -0.33);
     const frame = new THREE.Mesh(surfaceGeometry([...FRAME_TOP, ...FRAME_WALLS]), wood);
     frame.name = 'rail-cap';frame.castShadow = true;frame.receiveShadow = true;this.scene.add(frame);
-    const castingMaterial = new THREE.MeshStandardMaterial({ color: 0xa7ac9e, roughness: 0.38, metalness: 0.65 });
+    // Darker castings keep the pockets reading as holes cut into the rails.
+    const castingMaterial = new THREE.MeshStandardMaterial({ color: 0x3c403a, roughness: 0.45, metalness: 0.55 });
     for (const p of POCKETS) {
       const casting = new THREE.Mesh(new THREE.ShapeGeometry(planShape(pocketSurroundPoints(p)), 32), castingMaterial);
       casting.name = 'pocket-surround';
@@ -175,19 +195,21 @@ export class TableView {
     for (let i = 0; i < positions.count; i++) uv.push(positions.getX(i) / TABLE.width, -positions.getZ(i) / TABLE.length);
     felt.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     felt.name = 'cloth';felt.receiveShadow = true;this.scene.add(felt);
-    const cushion = new THREE.MeshStandardMaterial({ color: 0x326c50, roughness: 0.95 });
-    const seam = new THREE.LineBasicMaterial({ color: 0x143d2e, transparent: true, opacity: 0.6 });
+    const cushion = new THREE.MeshStandardMaterial({ color: 0x2a5e45, roughness: 0.95 });
     for (const [index, points] of CUSHIONS.entries()) {
       const geometry = surfaceGeometry(CUSHION_FACES[index]);
       const a = points[0], b = points[1];
       const mesh = new THREE.Mesh(geometry, cushion);
       mesh.name = 'cushion';mesh.castShadow = true;mesh.receiveShadow = true;this.scene.add(mesh);
-      const edge = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+      // A clear nose line outlines the playing area and each pocket jaw.
+      const edge = guideLine(0xd9ead8, 0.5, 1.5);
+      edge.name = 'cushion-nose';edge.material.depthTest = true;
+      setLinePoints(edge, [
         new THREE.Vector3(points[3].x, TABLE.clothHeight + TABLE.railTopHeight + 0.002, points[3].z),
         new THREE.Vector3(a.x, TABLE.clothHeight + TABLE.cushionNoseHeight + 0.002, a.z),
         new THREE.Vector3(b.x, TABLE.clothHeight + TABLE.cushionNoseHeight + 0.002, b.z),
         new THREE.Vector3(points[2].x, TABLE.clothHeight + TABLE.railTopHeight + 0.002, points[2].z),
-      ]), seam);
+      ]);
       this.scene.add(edge);
     }
     const liner = new THREE.MeshStandardMaterial({ color: 0x172019, roughness: 0.95, side: THREE.DoubleSide });
@@ -211,12 +233,14 @@ export class TableView {
       for (const x of [-2.15, 0, 2.15]) diamond(x, side * (TABLE.length / 2 + sightOffset));
     }
 
-    const markingMat = new THREE.LineBasicMaterial({ color: 0xb7d7b6, transparent: true, opacity: 0.12 });
-    const baulk = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-4.1, 0.04, TABLE.headSpot), new THREE.Vector3(4.1, 0.04, TABLE.headSpot)]), markingMat);
-    this.scene.add(baulk);
-    for (const z of [TABLE.footSpot, TABLE.headSpot]) {
-      const spot = new THREE.Mesh(new THREE.CircleGeometry(0.047, 16), new THREE.MeshBasicMaterial({ color: 0xa0bfa4, transparent: true, opacity: 0.4 }));
-      spot.rotation.x = -Math.PI / 2;spot.position.set(0, 0.043, z);this.scene.add(spot);
+    // Head string and spots are flat cloth markings, so balls still cover them.
+    const marking = new THREE.MeshBasicMaterial({ color: 0xe4f0df, transparent: true, opacity: 0.42, depthWrite: false });
+    const headString = new THREE.Mesh(new THREE.PlaneGeometry(TABLE.width, 0.035), marking);
+    headString.name = 'head-string';headString.raycast = () => {};headString.rotation.x = -Math.PI / 2;headString.position.set(0, TABLE.clothHeight + 0.002, TABLE.headSpot);
+    this.scene.add(headString);
+    for (const z of [TABLE.footSpot, 0, TABLE.headSpot]) {
+      const spot = new THREE.Mesh(new THREE.CircleGeometry(0.06, 24), new THREE.MeshBasicMaterial({ color: 0xf2f6ea, transparent: true, opacity: 0.8, depthWrite: false }));
+      spot.name = 'spot';spot.raycast = () => {};spot.rotation.x = -Math.PI / 2;spot.position.set(0, TABLE.clothHeight + 0.003, z);this.scene.add(spot);
     }
 
     const canvas = document.createElement('canvas');canvas.width = 512;canvas.height = 128;
@@ -232,20 +256,27 @@ export class TableView {
 
   buildAim() {
     this.aimGroup = new THREE.Group();this.scene.add(this.aimGroup);
-    this.guide = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xf4eed7, transparent: true, opacity: 0.65, dashSize: 0.13, gapSize: 0.15 }));
+    this.guide = guideLine(0xf4eed7, 0.9, 2.5);
     this.aimGroup.add(this.guide);
-    this.targetGuide = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xf4d08b, transparent: true, opacity: 0.5, dashSize: 0.11, gapSize: 0.13 }));
+    this.targetGuide = guideLine(0xf4d08b, 0.9, 2.5);
     this.aimGroup.add(this.targetGuide);
-    this.cueGuide = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x9de4e5, transparent: true, opacity: 0.8, dashSize: 0.1, gapSize: 0.12 }));
+    this.cueGuide = guideLine(0x9de4e5, 0.9, 2.2, true);
     this.aimGroup.add(this.cueGuide);
-    this.ghost = new THREE.Mesh(new THREE.RingGeometry(TABLE.radius * 0.88, TABLE.radius, 32), new THREE.MeshBasicMaterial({ color: 0xf4eed7, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+    this.ghost = new THREE.Mesh(new THREE.RingGeometry(TABLE.radius * 0.8, TABLE.radius, 32), new THREE.MeshBasicMaterial({ color: 0xf4eed7, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
     this.ghost.rotation.x = -Math.PI / 2;this.aimGroup.add(this.ghost);
+    // Aiming at a ball that cannot legally be hit first shows a "no" sign.
+    this.forbidden = new THREE.Mesh(new THREE.PlaneGeometry(TABLE.radius * 1.7, TABLE.radius * 0.24), this.ghost.material);
+    this.forbidden.rotation.set(-Math.PI / 2, 0, Math.PI / 4);this.aimGroup.add(this.forbidden);
     this.landingGhost = new THREE.Mesh(new THREE.RingGeometry(TABLE.radius * 0.65, TABLE.radius * 0.8, 32), new THREE.MeshBasicMaterial({ color: 0xffbc72, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
     this.landingGhost.rotation.x = -Math.PI / 2;this.aimGroup.add(this.landingGhost);
-    for (const guide of [this.guide, this.targetGuide, this.cueGuide, this.ghost, this.landingGhost]) {
+    for (const guide of [this.guide, this.targetGuide, this.cueGuide, this.ghost, this.forbidden, this.landingGhost]) {
       guide.material.depthTest = false;guide.material.depthWrite = false;
       guide.renderOrder = 80;
     }
+    // Rings around the ball(s) that must be hit first, shown between shots.
+    this.targetMarkers = new THREE.Group();this.targetMarkers.name = 'target-markers';this.scene.add(this.targetMarkers);
+    this.targetMarkerGeometry = new THREE.RingGeometry(TABLE.radius * 1.28, TABLE.radius * 1.5, 40);
+    this.targetMarkerMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
     this.cueGroup = new THREE.Group();this.aimGroup.add(this.cueGroup);
     this.cueGroup.renderOrder = 100;
     // Build outward from the ball. Negative X rotation puts radiusTop at the
@@ -333,8 +364,48 @@ export class TableView {
     return changed;
   }
 
-  updateAim(balls, angle, power, visible, spin = {}, aids = DEFAULT_AIM_AIDS, elevation = 0) {
+  // legal: ids that may be contacted first (null means any ball);
+  // highlight: ids ringed on the table, even while the cue is being placed.
+  // The ring pulses when a target appears (each new turn) and then fades out.
+  updateTargets(balls, highlight = [], now = performance.now()) {
+    const ids = new Set(highlight);
+    const shown = balls.filter((ball) => ids.has(ball.id) && !ball.pocketed);
+    while (this.targetMarkers.children.length < shown.length) {
+      const ring = new THREE.Mesh(this.targetMarkerGeometry, this.targetMarkerMaterial);
+      ring.rotation.x = -Math.PI / 2;ring.renderOrder = 70;ring.raycast = () => {};
+      this.targetMarkers.add(ring);
+    }
+    this.targetMarkers.children.forEach((ring, index) => {
+      const ball = shown[index];
+      if (ball) ring.position.set(ball.x, TABLE.clothHeight + 0.004 + (ball.y || 0), ball.z);
+    });
+    const key = shown.map((ball) => ball.id).join(',');
+    if (key && key !== this.targetKey) this.targetPulseStart = now;
+    this.targetKey = key;
+    this.targetIds = shown.map((ball) => ball.id);
+    this.animateTargets(now);
+  }
+
+  // Returns true while the ring needs re-rendering, including its final frame.
+  animateTargets(now = performance.now()) {
+    const t = (now - (this.targetPulseStart ?? -Infinity)) / 1000;
+    const active = !!this.targetKey && t >= 0 && t < TARGET_PULSE_SECONDS;
+    const wave = 0.5 - 0.5 * Math.cos(t * Math.PI * 2 / TARGET_PULSE_PERIOD);
+    const fade = Math.min(1, (TARGET_PULSE_SECONDS - t) / TARGET_FADE_SECONDS);
+    this.targetMarkers.children.forEach((ring, index) => {
+      ring.visible = active && index < this.targetIds.length;
+      ring.scale.setScalar(1 + 0.22 * wave);
+    });
+    this.targetMarkerMaterial.opacity = active ? (0.55 + 0.4 * (1 - wave)) * fade : 0;
+    const changed = active || this.targetRingsShown;
+    this.targetRingsShown = active;
+    return changed;
+  }
+
+  updateAim(balls, angle, power, visible, spin = {}, aids = DEFAULT_AIM_AIDS, elevation = 0, rules = {}) {
+    this.updateTargets(balls, rules.highlight);
     this.aimGroup.visible = visible;
+    this.illegalTarget = null;
     if (!visible) return;
     const cue = balls[0], dx = Math.sin(angle), dz = -Math.cos(angle);
     elevation = clampElevation(elevation);
@@ -364,27 +435,28 @@ export class TableView {
         this.landingGhost.visible = aids.contactCircle;
       }
     }
-    const color = elevation > 0 ? shotEffects(spin, elevation, power || 0.65).curve ? 0xc5a2ff : 0xffbc72 : 0xf4eed7;
-    this.guide.material.color.setHex(color);
+    const illegal = !!target && Array.isArray(rules.legal) && !rules.legal.includes(target.id);
+    this.illegalTarget = illegal ? target.id : null;
+    const color = illegal ? 0xff5a4e : elevation > 0 ? shotEffects(spin, elevation, power || 0.65).curve ? 0xc5a2ff : 0xffbc72 : 0xf4eed7;
+    this.guide.material.color.setHex(illegal ? 0xf4eed7 : color);
     this.ghost.material.color.setHex(color);
-    this.guide.geometry.dispose();
-    this.guide.geometry = new THREE.BufferGeometry().setFromPoints(points);
-    this.guide.computeLineDistances();
+    setLinePoints(this.guide, points);
     this.ghost.position.set(end.x, 0.05, end.z);
-    this.targetGuide.visible = !!target && aids.targetLine;
+    this.forbidden.position.set(end.x, 0.05, end.z);
+    // Like a real "no" sign, it shows even if the contact circle is turned off.
+    this.forbidden.visible = illegal;
+    if (illegal) this.ghost.visible = true;
+    this.targetGuide.visible = !!target && !illegal && aids.targetLine;
     this.cueGuide.visible = false;
-    if (target) {
+    if (target && !illegal) {
       const normal = new THREE.Vector3(target.x - end.x, 0, target.z - end.z).normalize();
       const start = new THREE.Vector3(target.x, end.y, target.z);
-      this.targetGuide.geometry.dispose();
-      this.targetGuide.geometry = new THREE.BufferGeometry().setFromPoints([start, start.clone().addScaledVector(normal, 1.6)]);
-      this.targetGuide.computeLineDistances();
+      setLinePoints(this.targetGuide, [start, start.clone().addScaledVector(normal, 1.6)]);
       if (aids.cueLine && elevation === 0) {
         const points = cuePathPreview(balls, target, end, angle, power, spin);
         if (points.length > 1) {
-          this.cueGuide.geometry.dispose();
-          this.cueGuide.geometry = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(p.x, end.y, p.z)));
-          this.cueGuide.computeLineDistances();this.cueGuide.visible = true;
+          setLinePoints(this.cueGuide, points.map((p) => new THREE.Vector3(p.x, end.y, p.z)));
+          this.cueGuide.visible = true;
         }
       }
     }

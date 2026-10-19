@@ -82,6 +82,7 @@ test('install manifest resolves inside the repo and ships real PNG icons at decl
   const manifest = JSON.parse(readFileSync(new URL('../public/manifest.webmanifest', import.meta.url)));
   const base = 'https://example.test/PocketBilliard/manifest.webmanifest';
   assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.orientation, 'landscape', 'the installed app opens in landscape');
   for (const key of ['id', 'start_url', 'scope']) assert.equal(new URL(manifest[key], base).href, 'https://example.test/PocketBilliard/');
   for (const icon of manifest.icons) {
     const png = readFileSync(new URL(`../public/${icon.src}`, import.meta.url));

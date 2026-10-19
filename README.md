@@ -42,19 +42,23 @@ Icons are committed assets; `python3 scripts/generate-icons.py` regenerates them
 
 The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-ball**, **Call Pocket**, or **Playground**. **Call Pocket** opens a dialog to choose **8-ball** or **9-ball** with called-shot rules; the regular modes need no pocket calls. Tap the Pocket Club logo to return to the menu; the table pauses, and **Continue** resumes it. All four match variants and Playground keep independent tables and state while the page remains open, including shots paused in motion. Reloading the page starts a fresh session; Playground’s five saved setup slots remain available.
 
-- **Touch to aim:** a tap on the cloth aims at that point when you release. A swipe rotates your existing aim without snapping toward your finger on touch-down or release. The white dotted line shows the initial path, the gold line previews the first target ball, and the cyan line estimates the white ball’s short post-contact path, including draw/follow. The contact circle marks the impact position. The trajectory lines render above balls.
+- **Touch to aim:** a tap on the cloth aims at that point when you release. A swipe rotates your existing aim without snapping toward your finger on touch-down or release. The solid white line shows the initial path, the gold line previews the object ball’s direction, and the dashed cyan line estimates the white ball’s short post-contact path, including draw/follow. The contact circle marks the impact position. Lines are drawn at a fixed screen thickness, so they stay visible on small phones, and render above balls.
 - **Aiming aids:** Settings has independent switches for the initial guide, target-ball line, white-ball path, and contact circle. Choices are saved on this device when storage is available. The cue remains visible even with every aid off.
 - **Drag the cue:** grab the visible stick and move it around the cue ball to rotate your aim. Touching the rear of the stick preserves the current angle instead of flipping the shot.
-- **Adaptive table layout:** the game compares side controls with a compact bottom bar and uses whichever gives the table more room without changing its proportions. Narrow portrait phones and wider tablets often use bottom controls; tall portrait tablets keep side controls. On wide landscape phones, match instructions move to the spare side space to free table height. All pockets remain visible.
+- **Adaptive table layout:** the game compares side controls with a compact bottom bar and uses whichever gives the table more room without changing its proportions. Narrow portrait phones and wider tablets often use bottom controls; tall portrait tablets keep side controls. On wide landscape phones, the action buttons move to the spare side space to free table height.
+- **Minimal on-screen text:** the highlighted player card shows whose turn it is, short pop-ups report fouls and turn changes, and buttons use short labels (**✓ Ready**, **Move cue**, **Call shot**, **Safety**, **Push**). Full instructions remain available to screen readers. All pockets remain visible.
 - **Fine-aim wheel:** drag up/down beside the table, or left/right on the bottom bar, for precise adjustments. Mouse scrolling and arrow keys also work on the wheel; Shift + arrow gives an even smaller step.
 - **Shoot:** follow the power control’s arrow: pull **down** beside the table or **right** on the bottom bar, then release to shoot. Halfway is **100%**; the full pull reaches **200%**, with an orange boosted-power indicator above 100%. Tapping alone does not shoot. Arrow keys still adjust in 5% steps; End on the control selects 200%.
 - **Cue-ball spin:** tap **SPIN** above the power control for a **face-on 3D close-up** of the white ball. Contact view looks straight down the cue axis, hiding the stick and surrounding objects so the contact point is easy to see. Swipe anywhere in the view to adjust spin **relative to its current position**; merely touching it does not move the dot. Swipe down for draw/backspin, up for follow/topspin, and sideways for sidespin. Multiple swipes accumulate; presets and Home can center it. The red marker shows the real surface contact, green marks the reachable area, and the dashed gold line marks the ball’s equator. Raising the cue rotates that area upward—even full draw hits above the equator at steep angles. **ANGLE** opens in **Side** view with the stick visible; **Clearance** gives a wider side view of nearby balls. An amber ball and ghost cue show a blocked lower angle when automatic clearance raises the actual stick. The inline angle slider lets you watch the contact change while setting spin. Each time you open SPIN or ANGLE, its camera returns to the appropriate default.
 - **Vertical cue angle / jumps:** the separate **ANGLE** button opens a manual elevation slider. Raise the cue butt from the calculated minimum clearance up to **90° (vertical)**. Nearby balls determine the minimum from their height, position, and distance from the shaft. **Auto clearance** uses the lowest clear angle; when the shaft is clear, that is **0°**. Angle, tip contact, and power determine the motion. At 90°, a centered strike hops in place; an off-center strike gives spin that table friction can turn into lateral travel. See the jump-shot practice below.
 - **Cancel a shot:** return your finger to the starting point or move perpendicular to the pull direction before releasing. Switching apps, opening a dialog, or rotating the screen cancels an unfinished pull too.
-- **Left/right controls:** open **Settings** in the header and choose the control side. Side controls follow the selected outer rail; bottom controls mirror their order. The selection is saved on this device when browser storage is available.
+- **Target ball:** like 8 Ball Pool, the ball you must hit first gets a pulsing white ring for a few seconds at the start of each turn whenever there is exactly one (the lowest ball in 9-ball, or the 8 once your group is cleared). The 9-ball HUD keeps showing that ball, ringed, beside the action buttons. If you aim at a ball you may not hit first — the wrong group, the 8 too early, a non-lowest ball in 9-ball, or a ball in the kitchen after a break foul — the contact circle turns into a red “no” sign and the gold/cyan lines are hidden.
+- **Game menu:** the **☰** button in the header holds **New game** (or **Restore setup** in Playground), **Sound** on/off, **Settings**, **How to play**, and **Main menu**. Tap outside the menu or press Escape to close it; that tap never aims or shoots.
+- **Landscape by default:** on phones and tablets the game turns to landscape when a game starts. Installed apps lock to landscape; in a browser tab it enters fullscreen to lock rotation, and where rotation can’t be locked (such as iOS Safari) a reminder asks you to turn the device. Choose **Settings → Screen orientation → Auto-rotate** to follow the device instead; portrait layouts still work.
+- **Left/right controls:** open **Settings** from the ☰ menu and choose the control side. Side controls follow the selected outer rail; bottom controls mirror their order. The selection is saved on this device when browser storage is available.
 - **Pocketed-ball list:** a slim tray sits opposite side controls, or horizontally above the bottom controls. It shows removed numbered balls in order, including balls driven off the table. Scroll the tray to see every ball. Cue-ball scratches and out-of-bounds balls are announced separately. A new game clears the tray.
 - **Desktop:** drag and release with a mouse, or use left/right arrows to aim, Shift + arrow for finer adjustments, up/down arrows for power, and Space to shoot while the table has focus. When the power control has focus, its arrow keys adjust power and Enter/Space fires; Escape cancels.
-- Tap the sound icon for optional synthesized shot sounds. Tap **?** for the rules, or the restart arrow to re-rack.
+- Open the ☰ menu to turn on optional synthesized shot sounds, read the rules, or re-rack.
 
 ### Two-player 8-ball
 
@@ -68,7 +72,7 @@ The app opens on a **main menu**. Choose **Two-player 8-ball**, **Two-player 9-b
 ### Two-player 9-ball
 
 - **Rack and break:** a nine-ball diamond with 1 on the foot spot, 9 in the center, and 2 at the rear. Place the cue behind the head string, confirm, and hit 1 first. Pocket a numbered ball or send at least **three distinct object balls** to rails. An illegal break re-racks with the opponent choosing the breaker.
-- **Lowest ball first:** the HUD highlights the lowest remaining number. Hit that ball first; any legally pocketed numbered ball keeps your turn. A dry legal shot passes the turn. There are no called pockets or declared safeties in this mode.
+- **Lowest ball first:** the lowest remaining number is the target ball, ringed on the table and shown in the HUD. Hit that ball first; any legally pocketed numbered ball keeps your turn. A dry legal shot passes the turn. There are no called pockets or declared safeties in this mode.
 - **Win:** legally pocket the 9, including on the break or in a combination after hitting the lowest ball first. You do not have to clear 1–8 first.
 - **Push-out:** on the shot immediately after a legal break, optionally tap **Push** before shooting. First-contact and rail requirements are waived, but scratches and other fouls still count. After a legal push, the opponent chooses to take the position or pass it back. Normal rules resume afterward.
 - **Fouls and spotting:** fouls give the opponent ball in hand **anywhere**, including after a legal-break foul. A 9 pocketed on a foul or push-out, or driven off the table, is re-spotted; other removed balls stay down. A re-spotted 9 is removed from the pocketed-ball tray.
@@ -125,13 +129,15 @@ This is a selected 9-foot profile based on the [WPA equipment specifications, se
 | --- | --- |
 | Playing area | 100 × 50 inches |
 | Ball diameter | 2.25 inches |
-| Total rail width, including cushion | 6 inches (WPA range: 4–7.5) |
+| Outside frame | **114 × 64 inches** |
+| Total rail width, including cushion | 7 inches (WPA range: 4–7.5) |
 | Covered cushion depth, nose to cap | 1 15/16 inches (WPA range: 1 7/8–2) |
-| Flat cap width behind the cushion | **4 1/16 inches / 103.2 mm** along the straight rails |
+| Flat cap width behind the cushion | **5 1/16 inches / 128.6 mm** along the straight rails |
 | Nose height above cloth | **63.5% of ball diameter / 36.3 mm** |
 | Selected cap height above cloth | 1.75 inches / 44.45 mm |
 | Resulting cushion-top slope | **Approximately 9.4°** |
 | Corner / side pocket mouth | 4.5 / 5 inches |
+| Corner / side pocket shelf (mouth line to hole edge) | 1.5 / 0.1875 inches (WPA: 1–2.25 / 0–0.375) |
 | Horizontal corner / side jaw angles | 142° / 104° |
 
 Manufacturers use different cap heights, rubber sections, pocket shelves, and corner shapes: WPA specifies ranges, not one universal rail profile. The cap height and rounded frame here are explicit design choices, not measurements copied from a particular brand. The model uses a triangular cushion section and approximate rigid contacts; it does not simulate rubber deformation or a manufacturer's full pocket back-draft/liner profile.
@@ -153,7 +159,7 @@ npm run build
 npm run preview
 ```
 
-Deploy the generated `dist/` directory to any static web host. The game uses WebGL and works in current mobile Safari, Chrome, and Firefox. Portrait is the primary layout, with a compact landscape layout as well. Fonts use Google Fonts when available and fall back to system fonts.
+Deploy the generated `dist/` directory to any static web host. The game uses WebGL and works in current mobile Safari, Chrome, and Firefox. Landscape is the default on touch devices, with portrait layouts available through Auto-rotate. Fonts use Google Fonts when available and fall back to system fonts.
 
 ## Structure
 

@@ -32,3 +32,20 @@ export function savePowerSide(side, storage) {
   }
   return value;
 }
+
+const ORIENTATION_KEY = 'pocket-club.orientation';
+
+// Landscape fits the long table best, so it is the default on touch devices.
+export function loadOrientation(storage) {
+  try {
+    return (storage ?? globalThis.localStorage)?.getItem(ORIENTATION_KEY) === 'auto' ? 'auto' : 'landscape';
+  } catch {
+    return 'landscape';
+  }
+}
+
+export function saveOrientation(value, storage) {
+  const choice = value === 'auto' ? 'auto' : 'landscape';
+  try { (storage ?? globalThis.localStorage)?.setItem(ORIENTATION_KEY, choice); } catch { /* Session settings still apply. */ }
+  return choice;
+}
