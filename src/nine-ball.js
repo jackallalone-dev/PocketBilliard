@@ -20,7 +20,7 @@ export class NineBallGame extends EightBallGame {
   callTargets() { return this.remaining(); } // Combinations may call any remaining ball.
   get stalemateEligible() { return false; }
   callReady(call) {
-    if (this.pendingBreak || this.pendingPush) return false;
+    if (this.pendingPush) return false;
     if (call?.push) return !this.isBreak && this.pushAvailable;
     return super.callReady(call);
   }
@@ -38,7 +38,7 @@ export class NineBallGame extends EightBallGame {
   }
 
   resolveShot(report) {
-    if (this.winner !== null || this.pendingBreak || this.pendingPush) return null;
+    if (this.winner !== null || this.pendingPush) return null;
     const shooter = this.currentPlayer, other = 1 - shooter;
     const pockets = report.pockets || [], ids = pockets.map((ball) => ball.id);
     const offTable = report.offTable || [];
@@ -54,13 +54,7 @@ export class NineBallGame extends EightBallGame {
     const calledNine = madeCall && report.call.ball === 9;
 
     if (wasBreak) {
-      const legalBreak = numberedPocketed || new Set(report.numberedRails || []).size >= 3;
-      if (!legalBreak) {
-        this.currentPlayer = other;
-        this.pendingBreak = { offender: shooter, chooser: other };
-        this.ballInHand = null;this.placementConfirmed = false;this.pushAvailable = false;
-        return { illegalBreak: true, player: other, scratch, reason: 'illegal-break' };
-      }
+      // Every break stands; a dry break simply passes the turn.
       const cue = report.start?.find((ball) => ball.id === 0);
       if (!cue || cue.z <= TABLE.headSpot) foul ||= 'head-string';
     }

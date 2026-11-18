@@ -20,10 +20,10 @@ The main menu offers regular **8-ball**, regular **9-ball**, and **Call Pocket**
 | Source | In-game behavior |
 | --- | --- |
 | 1, 2.1 | Solids/stripes; randomized rack with the apex on the foot spot, the 8 in the center, and opposite groups at the two rear corners. |
-| 2 | New racks default to alternating breakers. Players can select the opening breaker in New Game, standing in for the real-world rating/lag procedure. |
-| 3 | Break placement behind the head string. Pocket a numbered ball or send at least four **distinct object balls** to rails. The cue can hit any object first on the break. |
-| 3 | Illegal break: re-rack; opponent chooses to break or require the offender to break again. |
-| 3 | A legal break with a pocket retains the turn; a dry legal break passes it. A foul on a legal break gives the opponent ball in hand behind the head string, with the first object contacted outside the kitchen. |
+| 2 | Player 1 breaks the first rack; breaks alternate after that, standing in for the real-world lag. |
+| 3 | Break placement behind the head string (drag the cue ball; no confirmation). The cue can hit any object first on the break. |
+| 3 | **Digital change:** every break stands. The UPA four-rail requirement and re-rack choice are not used; a dry break simply passes the turn. |
+| 3 | A break with a pocket retains the turn; a dry break passes it. A foul on the break gives the opponent ball in hand anywhere on the table. |
 | 4 | A legally pocketed 8 on the break wins. Pocketing it with a simultaneous foul loses. |
 | 5 | Groups remain open after the break. A legal called pocket assigns the group. On an open table, either colored group may be hit first, but not the 8. The 8 can participate later in a combination. |
 | 6 | Ball-and-pocket calls; correct called pockets retain the turn. Banks, kicks, and combinations require no further details. All pocketed object balls stay down. |
@@ -43,9 +43,9 @@ Section references in this table are to the UPA 9-ball source.
 | Source | In-game behavior |
 | --- | --- |
 | 1, 2.1 | Diamond rack: 1 on the foot spot, 9 in the center, 2 at the rear, and the other numbers randomized. |
-| 2 | Alternating breakers by default; an agreed opening breaker can be selected in New Game. |
-| 3, 7.10 | Break from behind the head string, hitting 1 first. Pocket a numbered ball or send at least three **distinct object balls** to rails. An off-table ball does not count as a pocket toward this requirement. |
-| 3 | Illegal break: re-rack; the opponent chooses who breaks. A foul on a legal break gives ball in hand anywhere and counts toward the shooter's consecutive fouls. |
+| 2 | Alternating breakers. |
+| 3, 7.10 | Break from behind the head string, hitting 1 first. |
+| 3 | **Digital change:** every break stands (no three-rail requirement or re-rack choice); a dry break passes the turn. A foul on the break gives ball in hand anywhere and counts toward the shooter's consecutive fouls. |
 | 4 | Legally pocketing the 9 on the break wins. A fouled 9 is spotted instead. |
 | 1, 6, 10.5 | Hit the lowest remaining ball first. Any legal numbered pocket retains the turn; a dry legal shot passes it. Pocketing the 9 legally wins, including combinations. No called-pocket requirement. |
 | 5 | A declared push-out is available only on the shot immediately after a legal break, including a legal break with a foul. No first-contact or rail requirement applies; other fouls still apply. After a legal push, the opponent chooses to take the position or pass it back. |
@@ -69,7 +69,7 @@ Section references in this table are to the UPA 9-ball source.
 - **Explicit calls:** UPA permits obvious 8-ball shots without a verbal declaration. Both **Call Pocket** variants require an explicit ball-and-pocket call on non-break shots, avoiding guesses about intended banks, kicks, combinations, or winning pockets. Declaring Safety is the alternative, and legal 9-ball push-outs are exempt. Regular 8-ball and 9-ball do not use these controls.
 - **Ball in hand:** use the ball or its offset handle, then confirm. Placement automatically avoids overlaps rather than permitting accidental disturbance fouls. The cue returns to a valid provisional spot after a scratch, but the incoming player can reposition it.
 - **Illegal actions prevented by the interface:** shooting while balls move, moving object balls during match play, and multiple cue strikes in one stroke. The displayed active player controls each hot-seat inning; the software cannot identify which physical person is touching the device.
-- **First break:** there are no player speed ratings or a physical lag minigame. Player 1 is the initial default, with an agreed breaker selectable through New Game.
+- **First break:** there are no player speed ratings or a physical lag minigame. Player 1 breaks first and breaks alternate after that.
 - **8-ball three-foul loss:** the 8-ball source's section 8.2 explicitly says this is **pro only**, not amateur league play. In 8-ball, foul-inning counters are used only to make the mutual-stalemate action available. In 9-ball, the warned three-foul loss applies as described above.
 - **No shot clock:** section 9.1 makes this discretionary. No referee shot clock is selected for this local game.
 - **Physical/officiating rules:** foot on floor, cue/equipment standards, coaching time-outs, interference, physical ball tapping, marking cloth, match lateness, referees, disputes, and outside interference are not modeled.
@@ -84,5 +84,5 @@ Section references in this table are to the UPA 9-ball source.
 1. Place/confirm the cue for a break or ball in hand.
 2. After the break, choose **Call shot** → ball → pocket (P1–P6), or **Safety**.
 3. Aim, choose spin, pull the power control, and release.
-4. Read the foul/turn message. If an illegal break occurs, the incoming player chooses the re-break option.
+4. Read the foul/turn message. With ball in hand, drag the cue ball and shoot; there is nothing to confirm.
 5. Use Settings for concession or an eligible 8-ball mutual stalemate. Restart/another round defaults to the alternating breaker and preserves the selected variant. In Call Pocket 9-ball, the HUD still identifies the lowest ball to hit first; Push is available only immediately after a legal break.

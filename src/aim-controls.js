@@ -2,8 +2,8 @@ export const normalizeAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(an
 const FINE_AIM_STEP = 0.0005;
 
 export class TableAimControl {
-  constructor(element, { canAim, getCue, getAngle, setAngle, pointFromScreen, hitCue }) {
-    Object.assign(this, { element, canAim, getCue, getAngle, setAngle, pointFromScreen, hitCue });
+  constructor(element, { canAim, getCue, getAngle, setAngle, pointFromScreen, hitCue, ignore = () => false }) {
+    Object.assign(this, { element, canAim, getCue, getAngle, setAngle, pointFromScreen, hitCue, ignore });
     this.drag = null;
     element.addEventListener('pointerdown', (event) => this.start(event));
     element.addEventListener('pointermove', (event) => this.move(event));
@@ -24,7 +24,7 @@ export class TableAimControl {
   get active() { return this.drag !== null; }
 
   start(event) {
-    if (event.isPrimary === false || event.button !== 0 || this.active || !this.canAim()) return;
+    if (event.isPrimary === false || event.button !== 0 || this.active || !this.canAim() || this.ignore(event.clientX, event.clientY)) return;
     const point = this.pointFromScreen(event.clientX, event.clientY);
     if (!point) return;
     event.preventDefault();

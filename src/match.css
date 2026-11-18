@@ -1,30 +1,28 @@
-/* Fixed tracks keep the canvas still when placement/call buttons change. */
-/* Icons and short labels only: the player cards show whose turn it is, toasts
-   give rule feedback, and the full instruction stays for screen readers. */
-.match-actions { display: flex; justify-content: center; align-items: center; height: 32px; margin-top: 4px; }
-.match-actions > span { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.match-buttons { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; height: 32px; }
-.match-actions button { min-width: 64px; max-width: 150px; height: 32px; white-space: nowrap; border: 1px solid #526247; border-radius: 16px; padding: 7px 14px; color: #cfdbbf; background: #23301f; font-size: 10px; }
-.nine-target { display: flex; align-items: center; justify-content: center; width: 36px; height: 32px; flex: none; }
+/* Shot declaration chips (Call Pocket, 9-ball target and push-out). They sit
+   in the HUD column or bottom bar and only appear when a mode needs them. */
+.match-actions { flex: none; display: flex; flex-direction: column; gap: 5px; }
+.match-actions[hidden], .match-actions [hidden] { display: none; }
+.match-actions button { min-width: 0; min-height: 34px; padding: 6px 4px; border: 1px solid #526247; border-radius: 9px; color: #cfdbbf; background: #23301f; font-size: 10px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+.match-actions button[aria-pressed="true"] { background: var(--accent); color: #253020; border-color: var(--accent); }
+.match-actions button:disabled { opacity: .35; }
+.hud-bottom .match-actions { flex-direction: row; align-items: center; }
+.hud-bottom .match-actions button { min-height: 22px; padding: 2px 10px; white-space: nowrap; }
+.nine-target { display: flex; align-items: center; justify-content: center; height: 34px; flex: none; }
+.hud-bottom .nine-target { height: 22px; width: 30px; }
 .target-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* Matches the white ring drawn around the target ball on the table. */
-.nine-target .tray-ball { width: 24px; height: 24px; box-shadow: 0 0 0 2px #111917, 0 0 0 4px #fff, inset -3px -3px 4px #0004; }
-.nine-target .tray-ball span { width: 13px; height: 13px; font-size: 8px; }
-.game[data-call-pocket="false"] .pocket-labels { display: none; }
-.game[data-rack="nine"] .ball-tray { gap: 3px; }
-.game[data-rack="nine"] .ball-tray .tray-ball { width: 11px; height: 11px; }
+.nine-target .tray-ball { width: 22px; height: 22px; box-shadow: 0 0 0 2px #111917, 0 0 0 4px #fff, inset -3px -3px 4px #0004; }
+.nine-target .tray-ball span { width: 12px; height: 12px; font-size: 8px; }
+.hud-bottom .nine-target .tray-ball { width: 15px; height: 15px; box-shadow: 0 0 0 1.5px #111917, 0 0 0 3px #fff; }
+.hud-bottom .nine-target .tray-ball span { width: 9px; height: 9px; font-size: 6px; }
+.game[data-mode="playground"] .match-actions, .game[data-mode="playground"] .pocket-labels, .game[data-call-pocket="false"] .pocket-labels { display: none; }
 .game[data-rack="nine"] .ball-tray .tray-ball.next-ball { outline: 1.5px solid #fff; outline-offset: 1.5px; }
-#match-call { overflow: hidden; text-overflow: ellipsis; }
 .player-card.foul-warning .player-group { color: #efac83; }
-.match-settings [hidden] { display: none; }
-.match-placement-slot { display: contents; }
-#turn-status { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.match-actions button[aria-pressed="true"], #match-confirm { background: var(--accent); color: #253020; border-color: var(--accent); }
-.match-actions button:disabled { opacity: .35; }
-.match-actions [hidden], .match-settings[hidden], .game[data-mode="playground"] .match-actions, .game[data-mode="playground"] .pocket-labels { display: none; }
+
 .pocket-labels { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .pocket-labels > span { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; font: 6px 'Space Grotesk', sans-serif; color: #b8c6a8; background: #07120ac9; }
 .pocket-labels > span.called { color: #2b3022; background: var(--accent); box-shadow: 0 0 0 2px #ffdc9570; }
+
 .call-balls { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 18px; }
 .call-balls button { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #53654a; border-radius: 7px; background: #1a271b; }
 .call-balls .tray-ball { width: 24px; height: 24px; }.call-balls .tray-ball span { width: 13px; height: 13px; font-size: 8px; }
@@ -38,15 +36,9 @@
 .aim-settings input, .agreement input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
 .aim-settings small { font-size: 9px; color: #8fa585; margin-left: 6px; }
 .match-settings { display: flex; flex-direction: column; gap: 8px; margin: 20px 0; }
+.match-settings[hidden], .match-settings [hidden] { display: none; }
 .match-settings > span { font-size: 10px; color: #a9bf9c; }.match-settings small { font-size: 9px; line-height: 1.5; color: #85997a; }
 .match-settings button, .break-options .secondary-button { padding: 12px; font-size: 11px; }
 .match-settings button:disabled { opacity: .35; }
-.breaker-select { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-size: 12px; }
-.breaker-select select { background: #17271b; color: #d4ddc9; border: 1px solid #647252; padding: 9px 16px; border-radius: 6px; }
 .break-options { display: flex; flex-direction: column; gap: 10px; }
 .rules-note a { color: var(--accent); }
-@media (orientation: landscape) and (min-width: 600px) {
-  .game:not([data-mode="playground"]) { grid-template-rows: auto minmax(0, 1fr); }
-  .game:not([data-mode="playground"]) .table-info { position: static; width: 100%; height: auto; overflow: visible; clip-path: none; grid-row: 1; padding: 0 5px 4px; }
-  .game:not([data-mode="playground"]) .table-area { grid-row: 2; }
-}

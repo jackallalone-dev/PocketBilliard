@@ -5,7 +5,7 @@ import { AimWheel, TableAimControl, normalizeAngle } from '../src/aim-controls.j
 import { ShotControl } from '../src/shot-control.js';
 import { TableView } from '../src/table.js';
 import { TABLE } from '../src/table-geometry.js';
-import { controlDockLayout, tableControlLayout, BOTTOM_CONTROLS_HEIGHT } from '../src/control-layout.js';
+import { tableControlLayout, hudColumnWidth, BOTTOM_CONTROLS_HEIGHT } from '../src/control-layout.js';
 import { PocketHistory } from '../src/pocket-history.js';
 import { PoolPhysics } from '../src/physics.js';
 import { ControlElement } from './helpers/control-element.js';
@@ -135,17 +135,21 @@ test('bottom-bar fine aim follows horizontal swipes and rotation cancels an acti
   assert.ok(Math.abs(state.angle - 0.05) < 1e-12);
 });
 
-test('adaptive controls choose the larger proportional table without sacrificing portrait tablet height', () => {
-  for (const [width, height, expected] of [[428, 783, 'bottom'], [400, 751, 'bottom'], [806, 386, 'side'], [774, 358, 'side'], [748, 877, 'side'], [1004, 674, 'bottom']]) {
-    const { controls, horizontal } = tableControlLayout({ width, height });
-    assert.equal(controls, expected);
-    const tableWidth = (horizontal ? TABLE.frameLength : TABLE.frameWidth) + 0.3;
-    const tableHeight = (horizontal ? TABLE.frameWidth : TABLE.frameLength) + 0.3;
-    const oldScale = Math.min((width - 82) / tableWidth, height / tableHeight);
-    const scale = controls === 'side' ? oldScale : Math.min(width / tableWidth, (height - BOTTOM_CONTROLS_HEIGHT) / tableHeight);
-    assert.ok(scale >= oldScale);
-    if (controls === 'bottom') assert.ok(scale > oldScale * 1.05);
+test('adaptive HUD picks the layout that shows the larger table: side columns on landscape phones, bars in portrait', () => {
+  const long = TABLE.frameLength + 0.3, short = TABLE.frameWidth + 0.3;
+  for (const [width, height, expected] of [[800, 352, 'side'], [740, 352, 'side'], [915, 404, 'side'], [380, 780, 'bottom'], [428, 900, 'bottom'], [1004, 674, 'bottom']]) {
+    const layout = tableControlLayout({ width, height });
+    assert.equal(layout.controls, expected, `${width}×${height}`);
+    assert.equal(layout.column, hudColumnWidth(width));
+    assert.ok(layout.column >= 64 && layout.column <= 96, 'columns stay thumb-sized');
+    const chosen = Math.max(layout.side, layout.bottom) === layout[expected] || layout[expected] * 1.02 >= Math.max(layout.side, layout.bottom);
+    assert.ok(chosen, 'the chosen layout must not show a noticeably smaller table');
   }
+  // A landscape phone keeps the full height for the table.
+  const phone = tableControlLayout({ width: 800, height: 352 });
+  assert.ok(Math.abs(phone.side - 352 / short) < 1e-9);
+  assert.ok(phone.side > (352 - BOTTOM_CONTROLS_HEIGHT) / short);
+  assert.ok(phone.side * long <= 800 - phone.column * 2);
 });
 
 function viewAt(width, height, left = 0, top = 0) {
@@ -156,31 +160,6 @@ function viewAt(width, height, left = 0, top = 0) {
   view.resize();
   return view;
 }
-
-test('controls and pocketed balls dock on opposite sides without covering the table at phone and tablet sizes', () => {
-  for (const [width, height] of [[300, 530], [370, 680], [780, 890], [1280, 360]]) {
-    for (const side of ['left', 'right']) {
-      const area = { left: 10, top: 90, width, height };
-      const view = viewAt(width - 82, height, area.left + (side === 'left' ? 50 : 32), area.top);
-      const frame = view.frameScreenBounds();
-      const canvas = view.container.getBoundingClientRect();
-      const dock = controlDockLayout(frame, canvas, area, side);
-      const rail = canvas.left - area.left + (side === 'left' ? frame.left : frame.right);
-      const gap = side === 'left' ? rail - dock.left - 44 : dock.left - rail;
-      assert.ok(Math.abs(gap - 6) < 1e-6, 'dock must follow the table rail, not the viewport edge');
-      assert.ok(dock.left >= 0 && dock.left + 44 <= width);
-      assert.ok(dock.top - dock.height / 2 >= 0 && dock.top + dock.height / 2 <= height);
-      const opposite = side === 'left' ? 'right' : 'left';
-      const tray = controlDockLayout(frame, canvas, area, opposite, 26);
-      const oppositeRail = canvas.left - area.left + (opposite === 'left' ? frame.left : frame.right);
-      const trayGap = opposite === 'left' ? oppositeRail - tray.left - 26 : tray.left - oppositeRail;
-      assert.ok(Math.abs(trayGap - 6) < 1e-6, 'pocketed-ball tray must follow the opposite rail');
-      assert.ok(tray.left >= 0 && tray.left + 26 <= width);
-      assert.ok(tray.top - tray.height / 2 >= 0 && tray.top + tray.height / 2 <= height);
-      assert.ok(side === 'left' ? dock.left + 44 < tray.left : tray.left + 26 < dock.left);
-    }
-  }
-});
 
 test('cue hit testing has a finger-friendly target in portrait and landscape without swallowing cue-ball taps', () => {
   for (const [width, height] of [[320, 660], [900, 440]]) {

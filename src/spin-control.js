@@ -8,8 +8,9 @@ export class SpinControl {
     element.addEventListener('pointerdown', (event) => {
       if (event.isPrimary === false || event.button !== 0 || this.drag || !this.canChange()) return;
       event.preventDefault();
-      this.drag = { id: event.pointerId, original: { ...this.value }, x: event.clientX, y: event.clientY };
+      this.drag = { id: event.pointerId, original: { ...this.value } };
       element.focus({ preventScroll: true });element.setPointerCapture(event.pointerId);
+      this.pointTo(event);
     });
     element.addEventListener('pointermove', (event) => this.move(event));
     element.addEventListener('pointerup', (event) => {
@@ -32,19 +33,22 @@ export class SpinControl {
     if (notify) this.onChange({ ...this.value });
   }
 
+  // Absolute placement, like a real cue-ball diagram: the dot goes where the
+  // finger is. Full spin is the miscue limit, MAX_TIP_OFFSET of a radius out.
+  pointTo(event) {
+    const rect = this.element.getBoundingClientRect();
+    const radius = Math.min(rect.width, rect.height) / 2 * MAX_TIP_OFFSET;
+    if (radius <= 0) return;
+    const x = (event.clientX - rect.left - rect.width / 2) / radius;
+    const y = (rect.top + rect.height / 2 - event.clientY) / radius;
+    this.setValue({ x, y });
+  }
+
   move(event) {
     if (!this.drag || this.drag.id !== event.pointerId) return;
     if (!this.canChange()) { this.cancel();return; }
     event.preventDefault();
-    const rect = this.element.getBoundingClientRect();
-    const radius = Math.min(rect.width, rect.height) / 2 * MAX_TIP_OFFSET;
-    if (radius <= 0) return;
-    const dx = event.clientX - this.drag.x, dy = event.clientY - this.drag.y;
-    if (!this.drag.moved && Math.hypot(dx, dy) < 3) return;
-    this.drag.moved = true;
-    this.drag.x = event.clientX;this.drag.y = event.clientY;
-    // Relative motion: touching anywhere starts a swipe, never a new target.
-    this.setValue({ x: this.value.x + dx / radius, y: this.value.y - dy / radius });
+    this.pointTo(event);
   }
 
   end(restore) {

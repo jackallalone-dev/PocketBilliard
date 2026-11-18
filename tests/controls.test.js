@@ -22,7 +22,8 @@ test('dragging charges without shooting; release fires exactly once at the selec
   element.send('pointerdown');
   element.send('pointermove', { clientY: 190 });
   assert.equal(control.value, 1);
-  assert.equal(element.attributes.get('aria-valuenow'), '100');
+  assert.equal(element.attributes.get('aria-valuenow'), '50', 'half the pull shows as 50%');
+  assert.equal(element.attributes.get('aria-valuemax'), '100');
   assert.equal(shots.length, 0);
   element.send('pointerup', { clientY: 190 });
   element.send('pointerup', { clientY: 190 });
@@ -30,6 +31,18 @@ test('dragging charges without shooting; release fires exactly once at the selec
   assert.equal(control.value, 0);
   assert.equal(control.charging, false);
   assert.equal(element.captures.size, 0);
+});
+
+test('a full pull shows 100% while keeping the original maximum strike strength', () => {
+  const { element, control, shots } = setup();
+  element.send('pointerdown');
+  element.send('pointermove', { clientY: 280 });
+  assert.equal(control.value, 2, 'internal power is unchanged');
+  assert.equal(control.percent, 100);
+  assert.equal(element.attributes.get('aria-valuenow'), '100');
+  assert.equal(element.parts.output.innerHTML, '100<span>%</span>');
+  element.send('pointerup', { clientY: 280 });
+  assert.deepEqual(shots, [2]);
 });
 
 test('a tap, a small finger wobble, or returning to the start never fires', () => {
@@ -86,12 +99,14 @@ test('keyboard power adjustment, firing, and escape cancellation work without po
   const { element, control, shots } = setup();
   element.send('keydown', { key: 'ArrowUp' });
   element.send('keydown', { key: 'ArrowUp' });
-  assert.equal(control.value, 0.1);
+  assert.ok(Math.abs(control.value - 0.2) < 1e-12, 'each arrow step is 5% of the full pull');
+  assert.equal(element.attributes.get('aria-valuenow'), '10');
   element.send('keydown', { key: 'Enter', repeat: false });
-  assert.deepEqual(shots, [0.1]);
+  assert.equal(shots.length, 1);assert.ok(Math.abs(shots[0] - 0.2) < 1e-12);
   element.send('keydown', { key: 'End' });
   assert.equal(control.value, 2);
-  assert.equal(element.attributes.get('aria-valuemax'), '200');
+  assert.equal(element.attributes.get('aria-valuenow'), '100');
+  assert.equal(element.attributes.get('aria-valuemax'), '100');
   element.send('keydown', { key: 'Escape' });
   element.send('keydown', { key: ' ', repeat: false });
   assert.equal(shots.length, 1);

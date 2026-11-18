@@ -28,12 +28,12 @@ test('9-ball rack has exactly nine object balls in a diamond, with 1 on the spot
   }
 });
 
-test('three distinct object rails make a legal dry 9-ball break; fewer require the opponent’s re-break choice', () => {
-  const game = new NineBallGame();const legal = game.resolveShot(report());
-  assert.equal(legal.foul, null);assert.equal(game.currentPlayer, 1);assert.equal(game.pushAvailable, true);
-  const bad = new NineBallGame();assert.equal(bad.resolveShot(report({ numberedRails: [2, 2, 3] })).illegalBreak, true);
-  assert.deepEqual(bad.pendingBreak, { offender: 0, chooser: 1 });
-  assert.equal(bad.chooseBreak(1), true);assert.equal(bad.currentPlayer, 1);assert.equal(bad.isBreak, true);
+test('every 9-ball break stands: a dry break passes the turn and allows a push-out', () => {
+  for (const numberedRails of [[1, 2, 3], [2, 2, 3], []]) {
+    const game = new NineBallGame();const result = game.resolveShot(report({ numberedRails }));
+    assert.equal(result.foul, null);assert.equal(game.currentPlayer, 1);assert.equal(game.pushAvailable, true);
+    assert.equal(game.isBreak, false);assert.equal(game.pendingBreak, undefined);
+  }
 });
 
 test('breaks must hit 1 first; a legal-break foul gives ball in hand anywhere and counts as a foul', () => {

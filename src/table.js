@@ -140,14 +140,22 @@ export class TableView {
     this.raycaster = new THREE.Raycaster();
     this.aimPlane = new THREE.Plane(UP, -(TABLE.radius + 0.028));
     this.scene.add(new THREE.HemisphereLight(0xe8f0df, 0x243b2e, 2.6));
+    // A lamp almost straight above the bed, like a real table light. Only the
+    // balls cast shadows: rails and the cue overlay would throw long, one-sided
+    // bands across the cushions (and the cue's shadow ignores its overlay depth).
     const light = new THREE.DirectionalLight(0xfff4dc, 3.1);
-    light.position.set(-6, 17, -7);
+    light.position.set(-1.6, 20, -2.4);
     light.castShadow = true;
-    light.shadow.mapSize.set(1024, 1024);
-    Object.assign(light.shadow.camera, { left: -8, right: 8, top: 12, bottom: -12, near: 1, far: 45 });
-    light.shadow.bias = -0.0007;
-    light.shadow.normalBias = 0.015;
-    light.shadow.radius = 3;
+    light.shadow.mapSize.set(2048, 2048);
+    // Align the shadow camera with the table so a tight box covers the frame.
+    light.shadow.camera.up.set(0, 0, -1);
+    Object.assign(light.shadow.camera, {
+      left: -(TABLE.frameWidth / 2 + 0.6), right: TABLE.frameWidth / 2 + 0.6,
+      top: TABLE.frameLength / 2 + 0.6, bottom: -(TABLE.frameLength / 2 + 0.6), near: 1, far: 45,
+    });
+    light.shadow.camera.updateProjectionMatrix();
+    light.shadow.bias = -0.0004;
+    light.shadow.normalBias = 0.01;
     this.scene.add(light);
     const fill = new THREE.DirectionalLight(0xb7d7c7, 0.8);
     fill.position.set(8, 10, 6);this.scene.add(fill);
@@ -177,7 +185,7 @@ export class TableView {
     this.roundedSlab(TABLE.frameWidth + 0.22, TABLE.frameLength + 0.22, 0.65, 0.36, edge, -0.7);
     this.roundedSlab(TABLE.frameWidth + 0.07, TABLE.frameLength + 0.07, 0.58, 0.08, brass, -0.33);
     const frame = new THREE.Mesh(surfaceGeometry([...FRAME_TOP, ...FRAME_WALLS]), wood);
-    frame.name = 'rail-cap';frame.castShadow = true;frame.receiveShadow = true;this.scene.add(frame);
+    frame.name = 'rail-cap';frame.receiveShadow = true;this.scene.add(frame);
     // Darker castings keep the pockets reading as holes cut into the rails.
     const castingMaterial = new THREE.MeshStandardMaterial({ color: 0x3c403a, roughness: 0.45, metalness: 0.55 });
     for (const p of POCKETS) {
@@ -200,7 +208,7 @@ export class TableView {
       const geometry = surfaceGeometry(CUSHION_FACES[index]);
       const a = points[0], b = points[1];
       const mesh = new THREE.Mesh(geometry, cushion);
-      mesh.name = 'cushion';mesh.castShadow = true;mesh.receiveShadow = true;this.scene.add(mesh);
+      mesh.name = 'cushion';mesh.receiveShadow = true;this.scene.add(mesh);
       // A clear nose line outlines the playing area and each pocket jaw.
       const edge = guideLine(0xd9ead8, 0.5, 1.5);
       edge.name = 'cushion-nose';edge.material.depthTest = true;
@@ -250,8 +258,6 @@ export class TableView {
     const brand = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.05), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.16, depthWrite: false }));
     brand.rotation.x = -Math.PI / 2;brand.position.set(0, 0.046, 1.5);this.scene.add(brand);
 
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ opacity: 0.19 }));
-    floor.rotation.x = -Math.PI / 2;floor.position.y = -0.85;floor.receiveShadow = true;this.scene.add(floor);
   }
 
   buildAim() {
@@ -291,7 +297,6 @@ export class TableView {
       mesh.renderOrder = 100;
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.z = end + length / 2;
-      mesh.castShadow = true;
       this.cueGroup.add(mesh);
       end += length;
     };

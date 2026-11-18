@@ -54,8 +54,10 @@ export class ShotTracker {
   }
 }
 
-// UPA amateur 8-ball. Event reports come from the shot's chronological physics
-// events, not just the final list of balls that happened to fall.
+// 8-ball with UPA-based fouls and an arcade-style flow: every break stands (a
+// dry break passes the turn) and every foul gives ball in hand anywhere.
+// Event reports come from the shot's chronological physics events, not just
+// the final list of balls that happened to fall.
 export class EightBallGame {
   constructor({ callPocket = true } = {}) { this.callPocket = callPocket;this.reset(); }
   reset(breaker = 0) {
@@ -64,7 +66,7 @@ export class EightBallGame {
     this.groups = [null, null];this.pocketed = new Set();
     this.shotNumber = 1;this.winner = null;this.isBreak = true;
     this.ballInHand = 'kitchen';this.placementConfirmed = false;
-    this.pendingBreak = null;this.consecutiveFouls = [0, 0];
+    this.consecutiveFouls = [0, 0];
   }
 
   remaining(player) {
@@ -94,11 +96,6 @@ export class EightBallGame {
 
   get stalemateEligible() { return this.consecutiveFouls.every((count) => count >= 3); }
 
-  chooseBreak(player) {
-    if (!this.pendingBreak || ![this.pendingBreak.offender, this.pendingBreak.chooser].includes(player)) return false;
-    this.reset(player);return true;
-  }
-
   concede() {
     if (this.winner !== null) return null;
     this.winner = 1 - this.currentPlayer;
@@ -106,7 +103,7 @@ export class EightBallGame {
   }
 
   resolveShot(report) {
-    if (this.winner !== null || this.pendingBreak) return null;
+    if (this.winner !== null) return null;
     const shooter = this.currentPlayer, other = 1 - shooter;
     const pockets = report.pockets || [], ids = pockets.map((p) => p.id);
     const offTable = report.offTable || [];
@@ -123,13 +120,6 @@ export class EightBallGame {
     }
 
     if (this.isBreak) {
-      const legalBreak = ids.some((id) => id > 0 && !offTable.includes(id)) || new Set(report.numberedRails || []).size >= 4;
-      if (!legalBreak) {
-        this.currentPlayer = other;
-        this.pendingBreak = { offender: shooter, chooser: other };
-        this.ballInHand = null;this.placementConfirmed = false;
-        return { illegalBreak: true, player: other, scratch, reason: 'illegal-break' };
-      }
       if (!cueStart || cueStart.z <= TABLE.headSpot) foul ||= 'head-string';
       if (report.closeHit) foul ||= 'close-double-hit';
       for (const id of [...ids, ...offTable]) if (id > 0) this.pocketed.add(id);
@@ -140,7 +130,7 @@ export class EightBallGame {
       }
       const keepTurn = !foul && ids.some((id) => id > 0);
       this.currentPlayer = keepTurn ? shooter : other;
-      this.ballInHand = foul ? 'kitchen' : null;
+      this.ballInHand = foul ? 'table' : null;
       this.placementConfirmed = false;this.shotNumber++;
       this.consecutiveFouls[shooter] = foul ? 1 : 0;
       return { player: this.currentPlayer, keepTurn, scratch, foul, ballInHand: this.ballInHand, openTable: true };

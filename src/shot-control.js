@@ -31,7 +31,7 @@ export class ShotControl {
     if (this.horizontal === horizontal) return;
     this.cancel();this.horizontal = horizontal;
     this.element.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
-    this.element.setAttribute('aria-label', `Shot power, up to 200 percent. Drag ${horizontal ? 'right' : 'down'} and release to shoot.`);
+    this.element.setAttribute('aria-label', `Shot power. Drag ${horizontal ? 'right' : 'down'} and release to shoot.`);
     this.render();
   }
 
@@ -48,15 +48,17 @@ export class ShotControl {
     this.render();
   }
 
+  // Shown as 0–100% of the full pull; the strike strength itself is unchanged.
+  get percent() { return Math.round(this.value / MAX_SHOT_POWER * 100); }
+
   render() {
-    const percent = Math.round(this.value * 100);
+    const percent = this.percent;
     this.element.style.setProperty('--shot-power', this.value / MAX_SHOT_POWER);
-    this.element.setAttribute('aria-valuemax', String(MAX_SHOT_POWER * 100));
+    this.element.setAttribute('aria-valuemax', '100');
     this.element.setAttribute('aria-valuenow', String(percent));
     this.element.setAttribute('aria-valuetext', `${percent} percent. ${this.drag?.cancelled ? 'Release to cancel.' : this.drag && this.value > 0 ? 'Release to shoot.' : `Pull ${this.horizontal ? 'right' : 'down'} to charge.`}`);
     this.element.setAttribute('aria-disabled', String(this.disabled));
     this.element.classList.toggle('charging', this.charging);
-    this.element.classList.toggle('boosted', this.value > 1);
     this.element.classList.toggle('cancelled', !!this.drag?.cancelled);
     this.output.innerHTML = `${percent}<span>%</span>`;
     this.hint.textContent = this.disabled ? this.disabledLabel : this.drag?.cancelled ? 'CANCEL' : this.drag && this.value > 0 ? 'RELEASE' : this.value > 0 ? 'SPACE ↵' : this.horizontal ? 'PULL →' : 'PULL ↓';
@@ -69,7 +71,7 @@ export class ShotControl {
     this.element.focus({ preventScroll: true });
     this.drag = {
       id: event.pointerId, x: event.clientX, y: event.clientY, cancelled: false,
-      travel: Math.max(60, Math.min(180, this.track.getBoundingClientRect()[this.horizontal ? 'width' : 'height'] - 24)),
+      travel: Math.max(60, Math.min(240, this.track.getBoundingClientRect()[this.horizontal ? 'width' : 'height'] - 24)),
     };
     this.element.setPointerCapture(event.pointerId);
     this.setPower(0);
@@ -117,6 +119,6 @@ export class ShotControl {
       }
     } else if (event.key === 'Home') this.setPower(0);
     else if (event.key === 'End') this.setPower(MAX_SHOT_POWER);
-    else this.setPower(this.value + (['ArrowUp', 'ArrowRight'].includes(event.key) ? 0.05 : -0.05));
+    else this.setPower(this.value + (['ArrowUp', 'ArrowRight'].includes(event.key) ? 1 : -1) * MAX_SHOT_POWER / 20);
   }
 }

@@ -20,7 +20,7 @@ function assignedGame(onEight = false) {
   return game;
 }
 
-test('break placement is behind the string; breaker choice and reset are explicit', () => {
+test('break placement is behind the string and a reset sets the breaker', () => {
   const game = new EightBallGame();
   assert.equal(game.ballInHand, 'kitchen');
   assert.equal(game.confirmPlacement({ pocketed: false, z: TABLE.headSpot }), false);
@@ -38,15 +38,15 @@ test('a legal break leaves groups open and a pocket retains the breaker’s turn
   assert.equal(next.keepTurn, true);assert.deepEqual(game.groups, ['stripes', 'solids']);
 });
 
-test('a legal dry break passes the turn; four distinct numbered rail contacts are required', () => {
-  const legal = new EightBallGame();legal.resolveShot(report());assert.equal(legal.currentPlayer, 1);assert.equal(legal.isBreak, false);
-  const illegal = new EightBallGame();
-  const result = illegal.resolveShot(report({ numberedRails: [1, 1, 2, 3] }));
-  assert.equal(result.illegalBreak, true);assert.deepEqual(illegal.pendingBreak, { offender: 0, chooser: 1 });
-  assert.equal(illegal.resolveShot(report()), null);
-  assert.equal(illegal.chooseBreak(1), true);assert.equal(illegal.currentPlayer, 1);assert.equal(illegal.isBreak, true);
-  const repeated = new EightBallGame();repeated.resolveShot(report({ numberedRails: [] }));repeated.chooseBreak(0);
-  assert.equal(repeated.currentPlayer, 0);
+test('every break stands: a dry break passes the turn without a re-rack choice', () => {
+  for (const numberedRails of [[1, 2, 3, 4], [1, 1, 2, 3], []]) {
+    const game = new EightBallGame();
+    const result = game.resolveShot(report({ numberedRails }));
+    assert.equal(result.foul, null);assert.equal(result.keepTurn, false);
+    assert.equal(game.currentPlayer, 1);assert.equal(game.isBreak, false);
+    assert.equal(game.ballInHand, null, 'a clean dry break leaves the cue ball where it stopped');
+    assert.equal(game.pendingBreak, undefined);
+  }
 });
 
 test('UPA awards a legal 8-ball break, but an 8-ball break with a foul loses', () => {
@@ -58,15 +58,14 @@ test('UPA awards a legal 8-ball break, but an 8-ball break with a foul loses', (
   }
 });
 
-test('legal break fouls give kitchen placement and require the first object outside the kitchen', () => {
+test('a break foul gives the opponent ball in hand anywhere, with no kitchen restriction', () => {
   const game = new EightBallGame();game.resolveShot(report({ pockets: potted(0, 1) }));
-  assert.equal(game.currentPlayer, 1);assert.equal(game.ballInHand, 'kitchen');assert.deepEqual(game.groups, [null, null]);
-  const next = report({ firstContacts: [2], call: { ball: 2, pocket: 0 } });
+  assert.equal(game.currentPlayer, 1);assert.equal(game.ballInHand, 'table');assert.deepEqual(game.groups, [null, null]);
+  const next = report({ pockets: potted(2), firstContacts: [2], call: { ball: 2, pocket: 0 }, pocketAfterContact: true });
   next.start.find((ball) => ball.id === 2).z = TABLE.headSpot + 0.3;
-  assert.equal(game.resolveShot(next).foul, 'kitchen-contact');assert.equal(game.ballInHand, 'table');
-  const allowed = new EightBallGame();allowed.resolveShot(report({ pockets: potted(0, 1) }));
-  const legal = allowed.resolveShot(report({ pockets: potted(2), firstContacts: [2], call: { ball: 2, pocket: 0 }, pocketAfterContact: true }));
-  assert.equal(legal.foul, null);assert.deepEqual(allowed.groups, ['stripes', 'solids']);
+  next.start.find((ball) => ball.id === 0).z = -2;
+  const legal = game.resolveShot(next);
+  assert.equal(legal.foul, null);assert.deepEqual(game.groups, ['stripes', 'solids']);
 });
 
 test('groups are assigned only by a legal called pocket, not by flukes or safeties', () => {
